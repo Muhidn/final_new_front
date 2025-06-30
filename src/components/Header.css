@@ -1,0 +1,16 @@
+.dashboard-header { background: #1e293b; color: #fff; display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; }
+.header-left h2 { margin: 0; font-size: 1.5rem; }
+.header-right { display: flex; align-items: center; gap: 1.5rem; }
+.sidebar-color {
+  color: #0ea5e9 !important; /* Use your sidebar's main color here */
+}
+.btn-sidebar {
+  background: #0ea5e9;
+  color: #fff;
+  border: none;
+  transition: background 0.2s;
+}
+.btn-sidebar:hover, .btn-sidebar:focus {
+  background: #0369a1;
+  color: #fff;
+}

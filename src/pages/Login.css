@@ -1,0 +1,143 @@
+.lux-login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #e0f2fe 0%, #0ea5e9 100%);
+}
+
+.lux-login-form {
+  background: #fff;
+  color: #111;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.10), 0 1.5px 8px #0ea5e9;
+  padding: 2.5rem 2rem 2rem 2rem;
+  width: 100%;
+  max-width: 350px;
+  position: relative;
+  backdrop-filter: blur(8px);
+  animation: fadeIn 0.7s cubic-bezier(.4,0,.2,1);
+}
+
+.lux-title {
+  font-family: 'Montserrat', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #0ea5e9;
+  margin-bottom: 1.5rem;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+.lux-input-group {
+  margin-bottom: 1.1rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.lux-input {
+  width: 100%;
+  padding: 0.85rem 1.1rem 0.85rem 2.5rem;
+  border-radius: 8px;
+  border: 1.5px solid #e0f2fe;
+  background: #fff;
+  color: #111;
+  font-size: 1.08rem;
+  font-family: inherit;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 4px #0001;
+}
+
+.lux-input:focus {
+  border-color: #0ea5e9;
+  box-shadow: 0 0 0 2px #0ea5e9;
+}
+
+.lux-input-icon {
+  position: absolute;
+  left: 0.8rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #0ea5e9;
+  font-size: 1.2rem;
+  pointer-events: none;
+}
+
+.lux-password-group {
+  display: flex;
+  align-items: center;
+}
+
+.lux-eye {
+  background: none;
+  border: none;
+  color: #0ea5e9;
+  font-size: 1.2rem;
+  margin-left: -2.2rem;
+  cursor: pointer;
+  outline: none;
+  z-index: 2;
+}
+
+.lux-caps-warning {
+  color: #0ea5e9;
+  font-size: 0.95rem;
+  margin-left: 0.5rem;
+  font-weight: 500;
+}
+
+.lux-btn {
+  width: 100%;
+  padding: 0.9rem 0;
+  background: linear-gradient(90deg, #0ea5e9 0%, #38bdf8 100%);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 8px;
+  margin-bottom: 0.7rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  box-shadow: 0 2px 8px #0002;
+}
+
+.lux-btn:hover {
+  background: linear-gradient(90deg, #38bdf8 0%, #0ea5e9 100%);
+}
+
+.lux-error {
+  background: #e0f2fe;
+  color: #0ea5e9;
+  border-radius: 6px;
+  padding: 0.7rem 1rem;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 500;
+  border: 1px solid #0ea5e9;
+}
+
+@media (max-width: 600px) {
+  .lux-login-form {
+    padding: 1.5rem 0.7rem 1.2rem 0.7rem;
+    max-width: 98vw;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.shake {
+  animation: shake 0.3s;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-2px); }
+  20%, 80% { transform: translateX(4px); }
+  30%, 50%, 70% { transform: translateX(-8px); }
+  40%, 60% { transform: translateX(8px); }
+}
