@@ -17,6 +17,7 @@ import DownloadPermit from './pages/DownloadPermit';
 import LearningProgress from './pages/LearningProgress';
 import AttendanceManagement from './pages/AttendanceManagement';
 import Login from './pages/Login';
+import ManageLectures from './pages/ManageLectures';
 
 const AppRoutes = () => (
   <Routes>
@@ -43,6 +44,7 @@ const AppRoutes = () => (
             <Route path="/download-permit" element={<DownloadPermit />} />
             <Route path="/learning-progress" element={<LearningProgress />} />
             <Route path="/attendance-management" element={<AttendanceManagement />} />
+            <Route path="/manage-lectures" element={<ManageLectures />} />
             <Route path="*" element={<Navigate to="/login" />} />
           </Routes>
         </DashboardLayout>

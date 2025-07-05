@@ -22,6 +22,7 @@ const roleMenus = {
   ],
   school_admin: [
     { path: '/manage-students', label: 'Manage Students', icon: 'bi-people' },
+    { path: '/manage-lectures', label: 'Manage Lectures', icon: 'bi-easel' },
     { path: '/test-request', label: 'Test Request', icon: 'bi-question-circle' },
     { path: '/notifications', label: 'Notifications', icon: 'bi-bell' },
     { path: '/learner-permit', label: 'Learner Permit', icon: 'bi-card-checklist' },
