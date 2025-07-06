@@ -3,7 +3,9 @@ import React, { useState, useEffect } from 'react';
 const ManageLectures = () => {
   const [showModal, setShowModal] = useState(false);
   const [schools, setSchools] = useState([]);
+  const [lectures, setLectures] = useState([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
+  const [lecturesLoading, setLecturesLoading] = useState(true);
   const [form, setForm] = useState({
     username: '',
     email: '',
@@ -25,7 +27,7 @@ const ManageLectures = () => {
   useEffect(() => {
     if (showModal) {
       setSchoolsLoading(true);
-      fetch('/api/schools/')
+      fetch('http://127.0.0.1:8000/api/schools/')
         .then(res => res.json())
         .then(data => {
           console.log('Fetched schools:', data);
@@ -41,6 +43,51 @@ const ManageLectures = () => {
         .finally(() => setSchoolsLoading(false));
     }
   }, [showModal]);
+
+  const fetchLectures = async () => {
+    setLecturesLoading(true);
+    try {
+      // Fetch lectures
+      const response = await fetch('http://127.0.0.1:8000/api/lectures/');
+      if (!response.ok) throw new Error('Failed to fetch lectures');
+      const data = await response.json();
+      console.log('Fetched lectures data:', data);
+      
+      const lecturesArray = Array.isArray(data) ? data : [data];
+      
+      // Fetch all users in one request
+      const usersResponse = await fetch('http://127.0.0.1:8000/api/users/');
+      const usersData = await usersResponse.json();
+      const usersMap = Array.isArray(usersData) ? 
+        Object.fromEntries(usersData.map(user => [user.id, user])) : 
+        { [usersData.id]: usersData };
+      
+      // Fetch all schools in one request
+      const schoolsResponse = await fetch('http://127.0.0.1:8000/api/schools/');
+      const schoolsData = await schoolsResponse.json();
+      const schoolsMap = Array.isArray(schoolsData) ? 
+        Object.fromEntries(schoolsData.map(school => [school.id, school])) : 
+        { [schoolsData.id]: schoolsData };
+      
+      // Combine all data
+      const lecturesWithDetails = lecturesArray.map(lecture => ({
+        ...lecture,
+        user: usersMap[lecture.user] || null,
+        school: schoolsMap[lecture.school] || null
+      }));
+      
+      console.log('Lectures with details:', lecturesWithDetails);
+      setLectures(lecturesWithDetails);
+    } catch (err) {
+      console.error('Error fetching lectures:', err);
+    } finally {
+      setLecturesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLectures();
+  }, []);
 
   const handleChange = e => {
     const { name, value, files } = e.target;
@@ -86,20 +133,30 @@ const ManageLectures = () => {
       userForm.append('address', form.address);
       userForm.append('phone_number', form.phone_number);
       userForm.append('role', 'lecture');
+      userForm.append('is_active', 'true');
       if (form.profile_picture) userForm.append('profile_picture', form.profile_picture);
-      const userRes = await fetch('/api/users/', {
+      const userRes = await fetch('http://127.0.0.1:8000/api/users/', {
         method: 'POST',
+        headers: {
+          'Accept': 'application/json',
+        },
         body: userForm
       });
-      if (!userRes.ok) throw new Error('Failed to create user');
+      if (!userRes.ok) {
+        const errorData = await userRes.json();
+        throw new Error(errorData.detail || 'Failed to create user');
+      }
       const userData = await userRes.json();
       // 2. Create lecture
-      const lectureRes = await fetch('/api/lectures/', {
+      const lectureRes = await fetch('http://127.0.0.1:8000/api/lectures/', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
-          user_id: userData.id,
-          school_id: form.school_id,
+          user: userData.id,  // Changed from user_id to user to match your model
+          school: parseInt(form.school_id),  // Changed from school_id to school to match your model
           license_class: form.license_class
         })
       });
@@ -109,6 +166,7 @@ const ManageLectures = () => {
       setForm({
         username: '', email: '', password: '', first_name: '', last_name: '', address: '', phone_number: '', profile_picture: null, role: 'lecture', school_id: '', license_class: ''
       });
+      await fetchLectures(); // Refresh lectures list
     } catch (err) {
       setApiError(err.message);
     } finally {
@@ -116,10 +174,92 @@ const ManageLectures = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this lecture?')) return;
+    
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/api/lectures/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'Accept': 'application/json',
+        }
+      });
+      if (!response.ok) throw new Error('Failed to delete lecture');
+      setLectures(lectures.filter(lecture => lecture.id !== id));
+      setSuccess('Lecture deleted successfully!');
+    } catch (err) {
+      setApiError(err.message);
+    }
+  };
+
   return (
     <div className="manage-lectures-page">
-      <button className="btn btn-primary" onClick={() => setShowModal(true)}>Add Lecture</button>
+      <div className="d-flex justify-content-end mb-4">
+        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+          <i className="bi bi-plus-lg me-1"></i>Add Lecture
+        </button>
+      </div>
+
       {success && <div className="alert alert-success mt-3">{success}</div>}
+      {apiError && <div className="alert alert-danger mt-3">{apiError}</div>}
+
+      <div className="table-responsive">
+        <table className="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>School</th>
+              <th>License Class</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {lecturesLoading ? (
+              <tr>
+                <td colSpan="7" className="text-center">Loading lectures...</td>
+              </tr>
+            ) : lectures.length === 0 ? (
+              <tr>
+                <td colSpan="7" className="text-center">No lectures found</td>
+              </tr>
+            ) : (
+              lectures.map(lecture => (
+                <tr key={lecture.id}>
+                  <td>{lecture.user?.username}</td>
+                  <td>{lecture.user ? `${lecture.user.first_name} ${lecture.user.last_name}` : ''}</td>
+                  <td>{lecture.user?.email}</td>
+                  <td>{lecture.user?.phone_number}</td>
+                  <td>{lecture.school?.name}</td>
+                  <td>{lecture.license_class}</td>
+                  <td>
+                    <button 
+                      className="btn btn-sm btn-danger me-2"
+                      onClick={() => handleDelete(lecture.id)}
+                      title="Delete"
+                    >
+                      <i className="bi bi-trash"></i>
+                    </button>
+                    <button 
+                      className="btn btn-sm btn-primary"
+                      onClick={() => {
+                        // Edit functionality will be implemented
+                        alert('Edit functionality coming soon!');
+                      }}
+                      title="Edit"
+                    >
+                      <i className="bi bi-pencil"></i>
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
       {showModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog">
