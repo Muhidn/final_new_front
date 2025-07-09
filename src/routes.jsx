@@ -11,7 +11,6 @@ import GenerateReport from './pages/GenerateReport';
 import ManageStudents from './pages/ManageStudents';
 import LearnerPermit from './pages/LearnerPermit';
 import TestRequest from './pages/TestRequest';
-import ApplicationStatus from './pages/ApplicationStatus';
 import Notifications from './pages/Notifications';
 import DownloadPermit from './pages/DownloadPermit';
 import LearningProgress from './pages/LearningProgress';
@@ -39,7 +38,6 @@ const AppRoutes = () => (
             <Route path="/manage-students" element={<ManageStudents />} />
             <Route path="/learner-permit" element={<LearnerPermit />} />
             <Route path="/test-request" element={<TestRequest />} />
-            <Route path="/application-status" element={<ApplicationStatus />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/download-permit" element={<DownloadPermit />} />
             <Route path="/learning-progress" element={<LearningProgress />} />

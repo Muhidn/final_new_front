@@ -1,0 +1,244 @@
+/* Learning Progress Page Styles */
+.learning-progress {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+}
+
+.progress-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.progress-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.progress-card .card-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+  padding: 1rem 1.5rem;
+}
+
+.progress-card .card-header h5 {
+  margin: 0;
+  font-weight: 600;
+}
+
+.progress-card .card-body {
+  padding: 1.5rem;
+}
+
+.status-badge {
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 8px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-progress {
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.status-progress .progress-bar {
+  transition: width 0.6s ease;
+}
+
+.summary-card {
+  border: none;
+  border-radius: 12px;
+  transition: transform 0.2s ease;
+  height: 100%;
+}
+
+.summary-card:hover {
+  transform: translateY(-3px);
+}
+
+.summary-card .card-body {
+  padding: 2rem 1.5rem;
+}
+
+.summary-card i {
+  margin-bottom: 1rem;
+}
+
+.alert-custom {
+  border-radius: 10px;
+  border: none;
+  padding: 1rem 1.5rem;
+}
+
+.alert-custom.alert-warning {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  color: #856404;
+}
+
+.alert-custom.alert-info {
+  background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+  color: #0c5460;
+}
+
+.alert-custom.alert-danger {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: #721c24;
+}
+
+.alert-custom.alert-success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+}
+
+.upload-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 2px dashed #dee2e6;
+  transition: border-color 0.3s ease;
+}
+
+.upload-section:hover {
+  border-color: #007bff;
+}
+
+.btn-upload {
+  border-radius: 8px;
+  padding: 0.5rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-upload:hover {
+  transform: translateY(-1px);
+}
+
+.countdown-timer {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #007bff;
+}
+
+.countdown-timer.warning {
+  color: #ffc107;
+}
+
+.countdown-timer.danger {
+  color: #dc3545;
+}
+
+.loading-spinner {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.notification-badge {
+  position: relative;
+  display: inline-block;
+}
+
+.notification-badge::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #dc3545;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(220, 53, 69, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+  }
+}
+
+.permit-timeline {
+  position: relative;
+  padding: 1rem 0;
+}
+
+.permit-timeline::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #dee2e6;
+}
+
+.permit-timeline-item {
+  position: relative;
+  padding-left: 50px;
+  margin-bottom: 1rem;
+}
+
+.permit-timeline-item::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #007bff;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #007bff;
+}
+
+.permit-timeline-item.completed::before {
+  background: #28a745;
+  box-shadow: 0 0 0 2px #28a745;
+}
+
+.permit-timeline-item.warning::before {
+  background: #ffc107;
+  box-shadow: 0 0 0 2px #ffc107;
+}
+
+.permit-timeline-item.danger::before {
+  background: #dc3545;
+  box-shadow: 0 0 0 2px #dc3545;
+}
+
+@media (max-width: 768px) {
+  .progress-card .card-body {
+    padding: 1rem;
+  }
+  
+  .summary-card .card-body {
+    padding: 1.5rem 1rem;
+  }
+  
+  .upload-section {
+    padding: 1rem;
+  }
+}

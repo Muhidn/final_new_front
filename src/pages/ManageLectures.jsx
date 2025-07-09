@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 const ManageLectures = () => {
   const [showModal, setShowModal] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [editingLectureId, setEditingLectureId] = useState(null);
   const [schools, setSchools] = useState([]);
   const [lectures, setLectures] = useState([]);
   const [schoolsLoading, setSchoolsLoading] = useState(false);
@@ -101,7 +104,7 @@ const ManageLectures = () => {
     const errs = {};
     if (!form.username) errs.username = 'Username required';
     if (!form.email) errs.email = 'Email required';
-    if (!form.password) errs.password = 'Password required';
+    if (!editMode && !form.password) errs.password = 'Password required';
     if (!form.first_name) errs.first_name = 'First name required';
     if (!form.last_name) errs.last_name = 'Last name required';
     if (!form.address) errs.address = 'Address required';
@@ -123,49 +126,102 @@ const ManageLectures = () => {
     }
     setLoading(true);
     try {
-      // 1. Create user
-      const userForm = new FormData();
-      userForm.append('username', form.username);
-      userForm.append('email', form.email);
-      userForm.append('password', form.password);
-      userForm.append('first_name', form.first_name);
-      userForm.append('last_name', form.last_name);
-      userForm.append('address', form.address);
-      userForm.append('phone_number', form.phone_number);
-      userForm.append('role', 'lecture');
-      userForm.append('is_active', 'true');
-      if (form.profile_picture) userForm.append('profile_picture', form.profile_picture);
-      const userRes = await fetch('http://127.0.0.1:8000/api/users/', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-        },
-        body: userForm
-      });
-      if (!userRes.ok) {
-        const errorData = await userRes.json();
-        throw new Error(errorData.detail || 'Failed to create user');
+      if (editMode) {
+        // Update existing lecture
+        const lecture = lectures.find(l => l.id === editingLectureId);
+        if (!lecture || !lecture.user) {
+          throw new Error('Lecture or user data not found');
+        }
+
+        // Update user data
+        const userForm = new FormData();
+        userForm.append('username', form.username);
+        userForm.append('email', form.email);
+        if (form.password) userForm.append('password', form.password);
+        userForm.append('first_name', form.first_name);
+        userForm.append('last_name', form.last_name);
+        userForm.append('address', form.address);
+        userForm.append('phone_number', form.phone_number);
+        userForm.append('role', 'lecture');
+        userForm.append('is_active', 'true');
+        if (form.profile_picture) userForm.append('profile_picture', form.profile_picture);
+
+        const userRes = await fetch(`http://127.0.0.1:8000/api/users/${lecture.user.id}/`, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/json',
+          },
+          body: userForm
+        });
+        if (!userRes.ok) {
+          const errorData = await userRes.json();
+          throw new Error(errorData.detail || 'Failed to update user');
+        }
+
+        // Update lecture data
+        const lectureRes = await fetch(`http://127.0.0.1:8000/api/lectures/${editingLectureId}/`, {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            user: lecture.user.id,
+            school: parseInt(form.school_id),
+            license_class: form.license_class
+          })
+        });
+        if (!lectureRes.ok) throw new Error('Failed to update lecture');
+        
+        setSuccess('Lecture updated successfully!');
+      } else {
+        // Create new lecture
+        // 1. Create user
+        const userForm = new FormData();
+        userForm.append('username', form.username);
+        userForm.append('email', form.email);
+        userForm.append('password', form.password);
+        userForm.append('first_name', form.first_name);
+        userForm.append('last_name', form.last_name);
+        userForm.append('address', form.address);
+        userForm.append('phone_number', form.phone_number);
+        userForm.append('role', 'lecture');
+        userForm.append('is_active', 'true');
+        if (form.profile_picture) userForm.append('profile_picture', form.profile_picture);
+        
+        const userRes = await fetch('http://127.0.0.1:8000/api/users/', {
+          method: 'POST',
+          headers: {
+            'Accept': 'application/json',
+          },
+          body: userForm
+        });
+        if (!userRes.ok) {
+          const errorData = await userRes.json();
+          throw new Error(errorData.detail || 'Failed to create user');
+        }
+        const userData = await userRes.json();
+        
+        // 2. Create lecture
+        const lectureRes = await fetch('http://127.0.0.1:8000/api/lectures/', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            user: userData.id,
+            school: parseInt(form.school_id),
+            license_class: form.license_class
+          })
+        });
+        if (!lectureRes.ok) throw new Error('Failed to create lecture');
+        
+        setSuccess('Lecture registered successfully!');
       }
-      const userData = await userRes.json();
-      // 2. Create lecture
-      const lectureRes = await fetch('http://127.0.0.1:8000/api/lectures/', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          user: userData.id,  // Changed from user_id to user to match your model
-          school: parseInt(form.school_id),  // Changed from school_id to school to match your model
-          license_class: form.license_class
-        })
-      });
-      if (!lectureRes.ok) throw new Error('Failed to create lecture');
-      setSuccess('Lecture registered successfully!');
+      
       setShowModal(false);
-      setForm({
-        username: '', email: '', password: '', first_name: '', last_name: '', address: '', phone_number: '', profile_picture: null, role: 'lecture', school_id: '', license_class: ''
-      });
+      resetForm();
       await fetchLectures(); // Refresh lectures list
     } catch (err) {
       setApiError(err.message);
@@ -174,20 +230,117 @@ const ManageLectures = () => {
     }
   };
 
+  const resetForm = () => {
+    setForm({
+      username: '', email: '', password: '', first_name: '', last_name: '', address: '', phone_number: '', profile_picture: null, role: 'lecture', school_id: '', license_class: ''
+    });
+    setEditMode(false);
+    setEditingLectureId(null);
+    setErrors({});
+    setApiError('');
+  };
+
+  const handleEdit = (lecture) => {
+    setEditMode(true);
+    setEditingLectureId(lecture.id);
+    setForm({
+      username: lecture.user?.username || '',
+      email: lecture.user?.email || '',
+      password: '', // Don't populate password for security
+      first_name: lecture.user?.first_name || '',
+      last_name: lecture.user?.last_name || '',
+      address: lecture.user?.address || '',
+      phone_number: lecture.user?.phone_number || '',
+      profile_picture: null, // Don't populate file input
+      role: 'lecture',
+      school_id: lecture.school?.id || '',
+      license_class: lecture.license_class || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleAdd = () => {
+    resetForm();
+    setShowModal(true);
+  };
+
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this lecture?')) return;
+    // Find the lecture to get details for the confirmation
+    const lecture = lectures.find(l => l.id === id);
+    const lectureName = lecture?.user ? `${lecture.user.first_name} ${lecture.user.last_name}` : 'Unknown Lecturer';
+    const schoolName = lecture?.school?.name || 'Unknown School';
+    const licenseClass = lecture?.license_class || 'Unknown License';
+
+    // Show enhanced confirmation dialog
+    const result = await Swal.fire({
+      title: 'Delete Lecture?',
+      html: `
+        <div style="text-align: left;">
+          <p><strong>Are you sure you want to delete this lecture?</strong></p>
+          <hr>
+          <p><strong>Lecturer:</strong> ${lectureName}</p>
+          <p><strong>School:</strong> ${schoolName}</p>
+          <p><strong>License Class:</strong> ${licenseClass}</p>
+          <p><strong>Username:</strong> ${lecture?.user?.username || 'N/A'}</p>
+          <hr>
+          <p style="color: #dc3545; font-weight: bold;">⚠️ This action cannot be undone!</p>
+        </div>
+      `,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      focusCancel: true,
+      reverseButtons: true
+    });
+
+    if (!result.isConfirmed) return;
     
     try {
+      // Show loading indicator
+      Swal.fire({
+        title: 'Deleting...',
+        text: 'Please wait while we delete the lecture.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
       const response = await fetch(`http://127.0.0.1:8000/api/lectures/${id}/`, {
         method: 'DELETE',
         headers: {
           'Accept': 'application/json',
         }
       });
+      
       if (!response.ok) throw new Error('Failed to delete lecture');
+      
+      // Update the lectures list
       setLectures(lectures.filter(lecture => lecture.id !== id));
+      
+      // Show success message
+      Swal.fire({
+        title: 'Deleted!',
+        text: `${lectureName} has been successfully deleted.`,
+        icon: 'success',
+        timer: 3000,
+        showConfirmButton: false
+      });
+      
       setSuccess('Lecture deleted successfully!');
     } catch (err) {
+      // Show error message
+      Swal.fire({
+        title: 'Error!',
+        text: `Failed to delete lecture: ${err.message}`,
+        icon: 'error',
+        confirmButtonText: 'OK'
+      });
       setApiError(err.message);
     }
   };
@@ -195,7 +348,7 @@ const ManageLectures = () => {
   return (
     <div className="manage-lectures-page">
       <div className="d-flex justify-content-end mb-4">
-        <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn btn-primary" onClick={handleAdd}>
           <i className="bi bi-plus-lg me-1"></i>Add Lecture
         </button>
       </div>
@@ -244,10 +397,7 @@ const ManageLectures = () => {
                     </button>
                     <button 
                       className="btn btn-sm btn-primary"
-                      onClick={() => {
-                        // Edit functionality will be implemented
-                        alert('Edit functionality coming soon!');
-                      }}
+                      onClick={() => handleEdit(lecture)}
                       title="Edit"
                     >
                       <i className="bi bi-pencil"></i>
@@ -266,8 +416,11 @@ const ManageLectures = () => {
             <div className="modal-content">
               <form onSubmit={handleSubmit}>
                 <div className="modal-header">
-                  <h5 className="modal-title">Register Lecture</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowModal(false)}></button>
+                  <h5 className="modal-title">{editMode ? 'Edit Lecture' : 'Register Lecture'}</h5>
+                  <button type="button" className="btn-close" onClick={() => {
+                    setShowModal(false);
+                    resetForm();
+                  }}></button>
                 </div>
                 <div className="modal-body">
                   {apiError && <div className="alert alert-danger">{apiError}</div>}
@@ -281,7 +434,15 @@ const ManageLectures = () => {
                     {errors.email && <small className="text-danger">{errors.email}</small>}
                   </div>
                   <div className="mb-2">
-                    <input name="password" type="password" className="form-control" placeholder="Password" value={form.password} onChange={handleChange} />
+                    <input 
+                      name="password" 
+                      type="password" 
+                      className="form-control" 
+                      placeholder={editMode ? "Password (leave blank to keep current)" : "Password"} 
+                      value={form.password} 
+                      onChange={handleChange} 
+                    />
+                    {editMode && <small className="text-muted">Leave blank to keep current password</small>}
                     {errors.password && <small className="text-danger">{errors.password}</small>}
                   </div>
                   <div className="mb-2">
@@ -323,8 +484,24 @@ const ManageLectures = () => {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)} disabled={loading}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" disabled={loading}>{loading ? 'Submitting...' : 'Submit'}</button>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => {
+                      setShowModal(false);
+                      resetForm();
+                    }} 
+                    disabled={loading}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    disabled={loading}
+                  >
+                    {loading ? 'Submitting...' : (editMode ? 'Update' : 'Submit')}
+                  </button>
                 </div>
               </form>
             </div>

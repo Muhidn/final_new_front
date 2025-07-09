@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
 import Swal from 'sweetalert2';
 
@@ -15,7 +15,7 @@ const AttendanceManagement = () => {
   const [viewMode, setViewMode] = useState('take'); // 'take' or 'view'
 
   // Helper function to get student display name
-  const getStudentDisplayName = (student) => {
+  const getStudentDisplayName = useCallback((student) => {
     if (!student) return 'Unknown Student';
     
     // First, try to get name from user object if it exists
@@ -39,33 +39,7 @@ const AttendanceManagement = () => {
     if (student.username) return student.username;
     
     return `Student ID: ${student.id}`;
-  };
-
-  // Fetch initial data
-  useEffect(() => {
-    fetchSchools();
-    fetchLectures();
   }, []);
-
-  // Fetch students when school changes
-  useEffect(() => {
-    if (selectedSchool) {
-      fetchStudents();
-      fetchLecturesBySchool(); // Also fetch lectures for this school
-      setSelectedLecture(''); // Clear selected lecture when school changes
-    } else {
-      // Clear students when no school is selected
-      setStudents([]);
-      setSelectedLecture(''); // Clear selected lecture
-    }
-  }, [selectedSchool]);
-
-  // Fetch attendance records when lecture, date, or view mode changes
-  useEffect(() => {
-    if (selectedLecture && selectedDate && viewMode === 'view') {
-      fetchAttendanceRecords();
-    }
-  }, [selectedLecture, selectedDate, viewMode]);
 
   const fetchSchools = async () => {
     try {
@@ -94,7 +68,7 @@ const AttendanceManagement = () => {
     }
   };
 
-  const fetchLecturesBySchool = async () => {
+  const fetchLecturesBySchool = useCallback(async () => {
     try {
       // Try to fetch lectures filtered by school
       let url = selectedSchool 
@@ -128,9 +102,9 @@ const AttendanceManagement = () => {
       // Fallback to all lectures
       fetchLectures();
     }
-  };
+  }, [selectedSchool]);
 
-  const fetchStudents = async () => {
+  const fetchStudents = useCallback(async () => {
     setLoading(true);
     try {
       // Always fetch all students first
@@ -171,9 +145,9 @@ const AttendanceManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedSchool]);
 
-  const fetchAttendanceRecords = async () => {
+  const fetchAttendanceRecords = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(
@@ -273,7 +247,33 @@ const AttendanceManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedLecture, selectedDate, getStudentDisplayName]);
+
+  // Fetch initial data
+  useEffect(() => {
+    fetchSchools();
+    fetchLectures();
+  }, []);
+
+  // Fetch students when school changes
+  useEffect(() => {
+    if (selectedSchool) {
+      fetchStudents();
+      fetchLecturesBySchool(); // Also fetch lectures for this school
+      setSelectedLecture(''); // Clear selected lecture when school changes
+    } else {
+      // Clear students when no school is selected
+      setStudents([]);
+      setSelectedLecture(''); // Clear selected lecture
+    }
+  }, [selectedSchool, fetchStudents, fetchLecturesBySchool]);
+
+  // Fetch attendance records when lecture, date, or view mode changes
+  useEffect(() => {
+    if (selectedLecture && selectedDate && viewMode === 'view') {
+      fetchAttendanceRecords();
+    }
+  }, [selectedLecture, selectedDate, viewMode, fetchAttendanceRecords]);
 
   const handleAttendanceChange = (studentId, status) => {
     setStudents(prev => prev.map(student => 

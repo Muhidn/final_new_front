@@ -29,7 +29,6 @@ const roleMenus = {
     { path: '/settings', label: 'Settings', icon: 'bi-gear' },
   ],
   student: [
-    { path: '/application-status', label: 'Application Status', icon: 'bi-info-circle' },
     { path: '/notifications', label: 'Notifications', icon: 'bi-bell' },
     { path: '/download-permit', label: 'Download Permit', icon: 'bi-download' },
     { path: '/learning-progress', label: 'Learning Progress', icon: 'bi-graph-up' },
