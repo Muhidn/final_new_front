@@ -24,12 +24,10 @@ const roleMenus = {
     { path: '/manage-students', label: 'Manage Students', icon: 'bi-people' },
     { path: '/manage-lectures', label: 'Manage Lectures', icon: 'bi-easel' },
     { path: '/test-request', label: 'Test Request', icon: 'bi-question-circle' },
-    { path: '/notifications', label: 'Notifications', icon: 'bi-bell' },
     { path: '/learner-permit', label: 'Learner Permit', icon: 'bi-card-checklist' },
     { path: '/settings', label: 'Settings', icon: 'bi-gear' },
   ],
   student: [
-    { path: '/notifications', label: 'Notifications', icon: 'bi-bell' },
     { path: '/download-permit', label: 'Download Permit', icon: 'bi-download' },
     { path: '/learning-progress', label: 'Learning Progress', icon: 'bi-graph-up' },
     { path: '/settings', label: 'Settings', icon: 'bi-gear' },

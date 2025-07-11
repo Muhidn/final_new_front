@@ -36,7 +36,13 @@ const Header = () => {
       <div className="header-right d-flex align-items-center gap-4">
         <NotificationBell showCount={false} className="sidebar-color" />
         <div className="d-flex align-items-center gap-2">
-          <ProfilePicture src={user?.profile_picture} />
+          {user?.profile_picture ? (
+            <ProfilePicture src={user.profile_picture} />
+          ) : (
+            <div className="default-user-icon d-flex align-items-center justify-content-center">
+              <i className="bi bi-person-circle fs-3 text-secondary"></i>
+            </div>
+          )}
           <span className="ms-2 fw-semibold text-dark">{user?.first_name} {user?.last_name}</span>
         </div>
         <button className="btn btn-sidebar btn-sm ms-3" onClick={handleLogout}>

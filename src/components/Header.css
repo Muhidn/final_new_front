@@ -14,3 +14,26 @@
   background: #0369a1;
   color: #fff;
 }
+
+.default-user-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f8f9fa;
+  border: 2px solid #dee2e6;
+  transition: all 0.2s ease;
+}
+
+.default-user-icon:hover {
+  background-color: #e9ecef;
+  border-color: #0ea5e9;
+}
+
+.default-user-icon i {
+  color: #6c757d !important;
+  transition: color 0.2s ease;
+}
+
+.default-user-icon:hover i {
+  color: #0ea5e9 !important;
+}

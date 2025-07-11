@@ -1,0 +1,156 @@
+.learner-permit-container {
+    padding: 2rem;
+    background-color: #f8f9fa;
+  }
+  
+  .page-header {
+    margin-bottom: 2rem;
+  }
+  
+  .page-header h2 {
+    font-weight: 600;
+    color: #343a40;
+  }
+  
+  .student-card {
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.3s ease;
+  }
+  
+  .student-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-header {
+    background-color: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+    padding: 1rem 1.5rem;
+  }
+  
+  .card-body {
+    padding: 1.5rem;
+  }
+  
+  .student-info p {
+    margin-bottom: 0.5rem;
+  }
+  
+  .student-info strong {
+    color: #495057;
+  }
+  
+  .document-status {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 0.3rem;
+    margin-top: 1rem;
+  }
+  
+  .document-status.uploaded {
+    background-color: #e6f7f2;
+    color: #0d6efd;
+  }
+  
+  .document-status i {
+    font-size: 1.5rem;
+    margin-right: 1rem;
+  }
+  
+  .request-btn {
+    background-color: #0d6efd;
+    color: #fff;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.3rem;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+  }
+  
+  .request-btn:hover {
+    background-color: #0b5ed7;
+  }
+  
+  .request-btn:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+  }
+  
+  .loading-container,
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background-color: #fff;
+    border-radius: 0.5rem;
+  }
+  
+  .empty-state i {
+    font-size: 3rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+  }
+  
+  .empty-state h4 {
+    color: #343a40;
+  }
+  
+  .empty-state p {
+    color: #6c757d;
+  }
+  
+  .spinner-border {
+    width: 3rem;
+    height: 3rem;
+  }
+  
+  .swal2-title {
+    font-size: 1.5rem;
+  }
+  
+  .swal2-html-container {
+    font-size: 1rem;
+  }
+  
+  .swal2-confirm,
+  .swal2-cancel {
+    font-size: 1rem;
+  }
+  
+  .swal2-success-ring {
+    border-color: #0d6efd !important;
+  }
+  
+  .swal2-success-line-tip,
+  .swal2-success-line-long {
+    background-color: #0d6efd !important;
+  }
+  
+  .swal2-icon.swal2-success [class^=swal2-success-line] {
+    background-color: #0d6efd !important;
+  }
+  
+  .swal2-icon.swal2-success .swal2-success-ring {
+    border-color: #0d6efd !important;
+  }
+  
+  .swal2-styled.swal2-confirm {
+    background-color: #0d6efd !important;
+  }
+  
+  .swal2-styled.swal2-confirm:focus {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.5) !important;
+  }
+  
+  .swal2-styled.swal2-cancel {
+    background-color: #6c757d !important;
+  }
+  
+  .swal2-styled.swal2-cancel:focus {
+    box-shadow: 0 0 0 3px rgba(108, 117, 125, 0.5) !important;
+  }
+  
