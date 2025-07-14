@@ -34,7 +34,7 @@ const Header = () => {
         <h2 className="mb-0 fs-4 fw-bold sidebar-color">Dashboard</h2>
       </div>
       <div className="header-right d-flex align-items-center gap-4">
-        <NotificationBell showCount={false} className="sidebar-color" />
+        <NotificationBell showCount={true} className="sidebar-color" />
         <div className="d-flex align-items-center gap-2">
           {user?.profile_picture ? (
             <ProfilePicture src={user.profile_picture} />

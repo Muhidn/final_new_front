@@ -1,0 +1,439 @@
+/* Permit Approval Page Styles */
+.permit-approval-container {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  padding: 20px 0;
+}
+
+.permit-approval-card {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.permit-approval-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.permit-approval-card .card-header {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+  padding: 1rem 1.5rem;
+  font-weight: 600;
+}
+
+.permit-approval-card .card-body {
+  padding: 1.5rem;
+}
+
+/* Statistics Cards */
+.stats-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
+}
+
+.stats-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.stats-card .card-body {
+  padding: 1.5rem;
+}
+
+.stats-card i {
+  margin-bottom: 0.5rem;
+}
+
+.stats-card h4 {
+  font-weight: bold;
+  color: #2c3e50;
+}
+
+/* Controls Card */
+.controls-card {
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+}
+
+.controls-card .card-body {
+  padding: 1.5rem;
+}
+
+/* Filter Buttons */
+.filter-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.filter-buttons .btn {
+  border-radius: 8px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.filter-buttons .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Search Box */
+.search-box .input-group {
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.search-box .input-group-text {
+  background-color: #e9ecef;
+  border: 1px solid #ced4da;
+  border-right: none;
+  color: #6c757d;
+}
+
+.search-box .form-control {
+  border-left: none;
+  border-radius: 0 8px 8px 0;
+}
+
+.search-box .form-control:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Table Styles */
+.table {
+  margin-bottom: 0;
+}
+
+.table thead th {
+  background-color: #f8f9fa;
+  border-top: none;
+  font-weight: 600;
+  color: #495057;
+  padding: 1rem 0.75rem;
+}
+
+.table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.table td {
+  padding: 1rem 0.75rem;
+  vertical-align: middle;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Student Avatar */
+.student-avatar {
+  position: relative;
+}
+
+.avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 0.9rem;
+}
+
+/* School Info */
+.school-info .fw-bold {
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.school-info small {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+/* Badge Styles */
+.badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+}
+
+.badge.bg-success {
+  background-color: #28a745 !important;
+}
+
+.badge.bg-danger {
+  background-color: #dc3545 !important;
+}
+
+.badge.bg-warning {
+  background-color: #ffc107 !important;
+  color: #212529;
+}
+
+.badge.bg-info {
+  background-color: #17a2b8 !important;
+}
+
+.badge.bg-secondary {
+  background-color: #6c757d !important;
+}
+
+/* Button Styles */
+.btn-group .btn {
+  border-radius: 6px;
+  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-group .btn:first-child {
+  margin-right: 0.25rem;
+}
+
+.btn-group .btn:hover {
+  transform: translateY(-1px);
+}
+
+.btn-success {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-success:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-primary:hover {
+  background-color: #0069d9;
+  border-color: #0062cc;
+}
+
+.btn-outline-primary {
+  color: #007bff;
+  border-color: #007bff;
+}
+
+.btn-outline-primary:hover {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.btn-outline-secondary {
+  color: #6c757d;
+  border-color: #6c757d;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Upload/Download Actions */
+.d-flex.flex-column.gap-1 {
+  gap: 0.25rem !important;
+}
+
+.text-success.small {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Action column width */
+.table th:last-child,
+.table td:last-child {
+  min-width: 180px;
+}
+
+/* Loading States */
+.spinner-border-sm {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Empty State */
+.text-center .bi-inbox {
+  opacity: 0.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .permit-approval-container {
+    padding: 10px 0;
+  }
+  
+  .permit-approval-card .card-header,
+  .permit-approval-card .card-body,
+  .stats-card .card-body,
+  .controls-card .card-body {
+    padding: 1rem;
+  }
+  
+  .filter-buttons {
+    margin-bottom: 1rem;
+  }
+  
+  .filter-buttons .btn {
+    font-size: 0.8rem;
+    padding: 0.375rem 0.75rem;
+  }
+  
+  .table-responsive {
+    font-size: 0.875rem;
+  }
+  
+  .table td {
+    padding: 0.75rem 0.5rem;
+  }
+  
+  .btn-group .btn {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .student-avatar img,
+  .avatar-placeholder {
+    width: 32px;
+    height: 32px;
+  }
+  
+  .avatar-placeholder {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .stats-card h4 {
+    font-size: 1.25rem;
+  }
+  
+  .controls-card .row {
+    flex-direction: column;
+  }
+  
+  .filter-buttons,
+  .search-box {
+    margin-bottom: 1rem;
+  }
+  
+  .table thead {
+    display: none;
+  }
+  
+  .table tbody tr {
+    display: block;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 1rem;
+  }
+  
+  .table tbody td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+  }
+  
+  .table tbody td:last-child {
+    border-bottom: none;
+  }
+  
+  .table tbody td:before {
+    content: attr(data-label);
+    font-weight: bold;
+    color: #495057;
+  }
+}
+
+/* Animation for status changes */
+@keyframes statusChange {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.table tbody tr.status-changing {
+  animation: statusChange 0.5s ease-in-out;
+}
+
+/* Hover effects */
+.permit-approval-card,
+.stats-card,
+.controls-card {
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Focus states for accessibility */
+.btn:focus,
+.form-control:focus {
+  outline: none;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* Custom scrollbar for table */
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

@@ -1,7 +1,6 @@
 import React, { useContext } from 'react';
 import Header from '../components/Header';
 import Sidebar from '../components/Sidebar';
-import NotificationSystem from '../components/NotificationSystem';
 import { AuthContext } from '../context/AuthContext';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './DashboardLayout.css';
@@ -20,7 +19,6 @@ const DashboardLayout = ({ children }) => {
         )}
         <main className="col dashboard-content">{children}</main>
       </div>
-      <NotificationSystem />
     </div>
   );
 };

@@ -6,6 +6,7 @@ import './DownloadPermit.css';
 const DownloadPermit = () => {
   const { user } = useContext(AuthContext);
   const [studentData, setStudentData] = useState(null);
+  const [permitRequest, setPermitRequest] = useState(null);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [permitStatus, setPermitStatus] = useState('Not Available');
@@ -17,26 +18,51 @@ const DownloadPermit = () => {
   }, []);
 
   useEffect(() => {
-    if (studentData && studentData.permit) {
+    if (permitRequest && permitRequest.status === 'completed') {
       calculatePermitStatus();
     }
-  }, [studentData]);
+  }, [permitRequest]);
 
   const fetchStudentData = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/students/');
-      const data = await response.json();
+      setLoading(true);
+      
+      // First get the student data
+      const studentResponse = await fetch('http://127.0.0.1:8000/api/students/');
+      
+      if (!studentResponse.ok) {
+        throw new Error('Failed to fetch student data');
+      }
+      
+      const studentsData = await studentResponse.json();
       
       // Find current user's student data
-      const currentStudent = data.find(student => student.user.id === user.id);
+      const currentStudent = studentsData.find(student => student.user.id === user.id);
+      
+      if (!currentStudent) {
+        throw new Error('Student record not found');
+      }
+      
       setStudentData(currentStudent);
+      
+      // Now fetch the permit request for this student
+      const permitResponse = await fetch(`http://127.0.0.1:8000/api/students/${currentStudent.id}/permit/`);
+      
+      if (permitResponse.ok) {
+        const permitData = await permitResponse.json();
+        setPermitRequest(permitData);
+      } else if (permitResponse.status !== 404) {
+        // Only throw if it's not a 404 (no permit found)
+        throw new Error('Error fetching permit data');
+      }
+      
       setLoading(false);
     } catch (error) {
-      console.error('Error fetching student data:', error);
+      console.error('Error fetching data:', error);
       setLoading(false);
       Swal.fire({
         title: 'Error!',
-        text: 'Failed to fetch student data. Please try again.',
+        text: 'Failed to fetch permit information. Please try again.',
         icon: 'error',
         confirmButtonText: 'OK'
       });
@@ -44,27 +70,30 @@ const DownloadPermit = () => {
   };
 
   const calculatePermitStatus = () => {
-    if (!studentData.permit) {
+    if (!permitRequest || permitRequest.status !== 'completed') {
       setPermitStatus('Not Available');
       return;
     }
 
-    // Get the permit upload date from updated_at
-    const permitUploadDate = new Date(studentData.updated_at);
+    // Get the permit validity dates
+    const validFrom = new Date(permitRequest.permit_valid_from);
+    const validUntil = new Date(permitRequest.permit_valid_until);
     const currentDate = new Date();
     
-    // Calculate days since permit upload
-    const daysSinceUpload = Math.floor((currentDate - permitUploadDate) / (1000 * 60 * 60 * 24));
+    // Calculate days remaining until expiration
+    const totalDaysRemaining = Math.floor((validUntil - currentDate) / (1000 * 60 * 60 * 24));
     
-    // Permit is valid for 9 months (270 days), but needs renewal every 3 months (90 days)
-    const totalValidityDays = 270;
+    // Calculate total validity days
+    const totalValidityDays = Math.floor((validUntil - validFrom) / (1000 * 60 * 60 * 24));
+    
+    // Calculate renewal interval (90 days)
     const renewalIntervalDays = 90;
     
-    // Calculate which renewal period we're in
-    const daysInCurrentCycle = daysSinceUpload % renewalIntervalDays;
+    // Calculate days until next renewal
+    const daysSinceIssue = Math.floor((currentDate - validFrom) / (1000 * 60 * 60 * 24));
+    const daysInCurrentCycle = daysSinceIssue % renewalIntervalDays;
     const daysUntilRenewal = renewalIntervalDays - daysInCurrentCycle;
-    const totalDaysRemaining = totalValidityDays - daysSinceUpload;
-
+    
     setPermitValidityDays(totalDaysRemaining);
     setPermitDaysRemaining(daysUntilRenewal);
 
@@ -78,10 +107,10 @@ const DownloadPermit = () => {
   };
 
   const handleDownloadPermit = async () => {
-    if (!studentData.permit) {
+    if (!permitRequest || permitRequest.status !== 'completed' || !permitRequest.permit_document) {
       Swal.fire({
         title: 'No Permit Available',
-        text: 'Your permit has not been uploaded yet. Please contact your school.',
+        text: 'Your permit has not been approved or uploaded yet. Please contact your school or admin.',
         icon: 'warning',
         confirmButtonText: 'OK'
       });
@@ -91,23 +120,33 @@ const DownloadPermit = () => {
     setDownloading(true);
     
     try {
-      // Create a download link for the permit file
-      const response = await fetch(studentData.permit);
-      const blob = await response.blob();
-      
-      // Create a temporary URL for the blob
-      const url = window.URL.createObjectURL(blob);
-      
-      // Create a temporary anchor element and trigger download
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `learner_permit_${studentData.user.first_name}_${studentData.user.last_name}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      
-      // Clean up
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // If it's a blob URL (from recent upload), download directly
+      if (permitRequest.permit_document.startsWith('blob:')) {
+        const link = document.createElement('a');
+        link.href = permitRequest.permit_document;
+        link.download = permitRequest.permit_document_name || 'learner_permit.pdf';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } else {
+        // If it's a regular URL, fetch and download
+        const response = await fetch(permitRequest.permit_document);
+        const blob = await response.blob();
+        
+        // Create a temporary URL for the blob
+        const url = window.URL.createObjectURL(blob);
+        
+        // Create a temporary anchor element and trigger download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = permitRequest.permit_document_name || `learner_permit.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        
+        // Clean up
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }
       
       Swal.fire({
         title: 'Success!',
@@ -154,7 +193,26 @@ const DownloadPermit = () => {
     }
   };
 
+  const getRequestStatusBadge = (request) => {
+    if (!request) return <span className="badge bg-secondary">No Request</span>;
+
+    switch (request.status) {
+      case 'pending':
+        return <span className="badge bg-warning">Pending Approval</span>;
+      case 'approved':
+        return <span className="badge bg-success">Approved - Awaiting Document</span>;
+      case 'rejected':
+        return <span className="badge bg-danger">Rejected</span>;
+      case 'completed':
+        return <span className="badge bg-primary">Document Available</span>;
+      default:
+        return <span className="badge bg-secondary">Unknown Status</span>;
+    }
+  };
+
   const formatDate = (dateString) => {
+    if (!dateString) return 'N/A';
+    
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -194,250 +252,242 @@ const DownloadPermit = () => {
 
   return (
     <div className="download-permit-container">
-      <div className="container-fluid mt-4">
+      <div className="container-fluid">
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="card permit-header-card">
+              <div className="card-body">
+                <h2 className="mb-0">
+                  <i className="bi bi-file-earmark-text me-2"></i>
+                  Your Learner Permit
+                </h2>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="row">
-          <div className="col-12">
-            <h2 className="mb-4">
-              <i className="bi bi-download me-2"></i>
-              Download Learner Permit
-            </h2>
-          </div>
-        </div>
-
-        {/* Student Information Card */}
-        <div className="row mb-4">
-          <div className="col-md-6">
-            <div className="card permit-card student-info-card">
+          <div className="col-md-8">
+            <div className="card permit-details-card mb-4">
               <div className="card-header">
-                <h5 className="card-title mb-0">
-                  <i className="bi bi-person-badge me-2"></i>
-                  Student Information
-                </h5>
+                <h4 className="mb-0">Permit Information</h4>
               </div>
-            <div className="card-body">
-              <div className="row">
-                <div className="col-6">
-                  <p className="mb-2"><strong>Name:</strong></p>
-                  <p>{studentData.user.first_name} {studentData.user.last_name}</p>
-                </div>
-                <div className="col-6">
-                  <p className="mb-2"><strong>Email:</strong></p>
-                  <p>{studentData.user.email}</p>
-                </div>
-                <div className="col-6">
-                  <p className="mb-2"><strong>Phone:</strong></p>
-                  <p>{studentData.user.phone_number || 'Not provided'}</p>
-                </div>
-                <div className="col-6">
-                  <p className="mb-2"><strong>Address:</strong></p>
-                  <p>{studentData.user.address || 'Not provided'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Permit Status Card */}
-        <div className="col-md-6">
-          <div className="card permit-card permit-status-card">
-            <div className="card-header">
-              <h5 className="card-title mb-0">
-                <i className="bi bi-card-checklist me-2"></i>
-                Permit Status
-              </h5>
-            </div>
-            <div className="card-body">
-              <div className="d-flex align-items-center mb-3">
-                <i className={`bi ${getStatusIcon(permitStatus)} me-2`} style={{ fontSize: '1.5rem' }}></i>
-                <div>
-                  <span className={`${getStatusBadgeClass(permitStatus)} fs-6`}>
-                    {permitStatus}
-                  </span>
-                </div>
-              </div>
-              
-              {studentData.permit && (
-                <>
-                  <p className="mb-2">
-                    <strong>Last Updated:</strong> {formatDate(studentData.updated_at)}
-                  </p>
-                  
-                  {permitDaysRemaining && permitStatus === 'Active' && (
-                    <p className="mb-2">
-                      <strong>Renewal Required In:</strong> 
-                      <span className={`ms-2 ${permitDaysRemaining <= 7 ? 'text-warning' : 'text-info'}`}>
-                        {permitDaysRemaining} days
-                      </span>
+              <div className="card-body">
+                {!permitRequest ? (
+                  <div className="text-center py-4">
+                    <div className="permit-status-icon">
+                      <i className="bi bi-hourglass text-secondary"></i>
+                    </div>
+                    <h5 className="mt-3 mb-2">No Permit Request Found</h5>
+                    <p className="text-muted">
+                      Your school has not submitted a permit request for you yet. Please contact your school administrator.
                     </p>
-                  )}
-                  
-                  {permitValidityDays && permitValidityDays > 0 && (
-                    <p className="mb-0">
-                      <strong>Total Validity Remaining:</strong> 
-                      <span className={`ms-2 ${permitValidityDays <= 30 ? 'text-warning' : 'text-success'}`}>
-                        {permitValidityDays} days
-                      </span>
+                  </div>
+                ) : permitRequest.status === 'rejected' ? (
+                  <div className="text-center py-4">
+                    <div className="permit-status-icon">
+                      <i className="bi bi-x-circle text-danger"></i>
+                    </div>
+                    <h5 className="mt-3 mb-2">Permit Request Rejected</h5>
+                    <p className="text-muted">
+                      Your permit request was rejected on {formatDate(permitRequest.rejected_at)}.
                     </p>
-                  )}
-                </>
-              )}
+                    <div className="alert alert-danger">
+                      <strong>Reason for rejection:</strong> {permitRequest.rejection_reason || 'No reason provided'}
+                    </div>
+                    <p>Please contact your school administrator for more information.</p>
+                  </div>
+                ) : permitRequest.status === 'pending' ? (
+                  <div className="text-center py-4">
+                    <div className="permit-status-icon">
+                      <i className="bi bi-hourglass-split text-warning"></i>
+                    </div>
+                    <h5 className="mt-3 mb-2">Permit Request Pending</h5>
+                    <p className="text-muted">
+                      Your permit request was submitted on {formatDate(permitRequest.requested_at)} and is awaiting approval.
+                    </p>
+                    <div className="alert alert-info">
+                      We'll notify you when your permit request is processed.
+                    </div>
+                  </div>
+                ) : permitRequest.status === 'approved' ? (
+                  <div className="text-center py-4">
+                    <div className="permit-status-icon">
+                      <i className="bi bi-check-circle text-success"></i>
+                    </div>
+                    <h5 className="mt-3 mb-2">Permit Request Approved</h5>
+                    <p className="text-muted">
+                      Your permit request was approved on {formatDate(permitRequest.approved_at)}.
+                    </p>
+                    <div className="alert alert-success">
+                      The administrator is preparing your permit document. It will be available for download soon.
+                    </div>
+                  </div>
+                ) : (
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="permit-status-section text-center mb-4">
+                        <div className={`permit-status-icon ${permitStatus.toLowerCase() === 'active' ? 'active' : ''}`}>
+                          <i className={`bi ${getStatusIcon(permitStatus)}`}></i>
+                        </div>
+                        <h5 className="mt-3">Permit Status</h5>
+                        <span className={getStatusBadgeClass(permitStatus)}>
+                          {permitStatus}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="validity-info mb-4">
+                        <h5>Validity Information</h5>
+                        <ul className="list-group">
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Issue Date
+                            <span>{formatDate(permitRequest.permit_valid_from)}</span>
+                          </li>
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Expiration Date
+                            <span>{formatDate(permitRequest.permit_valid_until)}</span>
+                          </li>
+                          {permitValidityDays && (
+                            <li className="list-group-item d-flex justify-content-between align-items-center">
+                              Days Until Expiration
+                              <span className="badge bg-primary rounded-pill">{permitValidityDays}</span>
+                            </li>
+                          )}
+                          {permitDaysRemaining && (
+                            <li className="list-group-item d-flex justify-content-between align-items-center">
+                              Days Until Next Renewal
+                              <span className="badge bg-warning rounded-pill">{permitDaysRemaining}</span>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                    <div className="col-12">
+                      <div className="permit-actions mt-2 mb-3">
+                        <button
+                          className="btn btn-primary btn-lg w-100"
+                          onClick={handleDownloadPermit}
+                          disabled={downloading || !permitRequest.permit_document}
+                        >
+                          {downloading ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                              Downloading...
+                            </>
+                          ) : (
+                            <>
+                              <i className="bi bi-download me-2"></i>
+                              Download Your Permit
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Download Section */}
-      <div className="row mb-4">
-        <div className="col-12">
-          <div className="card permit-card download-card">
-            <div className="card-header">
-              <h5 className="card-title mb-0">
-                <i className="bi bi-download me-2"></i>
-                Download Your Permit
-              </h5>
-            </div>
-            <div className="card-body">
-              {studentData.permit ? (
-                <div className="download-section">
-                  <div className="mb-3">
-                    <i className="bi bi-file-earmark-pdf permit-file-icon"></i>
+          
+          <div className="col-md-4">
+            <div className="card permit-status-card mb-4">
+              <div className="card-header">
+                <h4 className="mb-0">Request Status</h4>
+              </div>
+              <div className="card-body">
+                <div className="status-timeline">
+                  <div className={`status-item ${permitRequest ? 'completed' : ''}`}>
+                    <div className="status-icon">
+                      <i className="bi bi-1-circle"></i>
+                    </div>
+                    <div className="status-text">
+                      <h6>Medical Document Uploaded</h6>
+                      <p className="small text-muted">
+                        {permitRequest 
+                          ? `Uploaded on ${formatDate(permitRequest.medical_document_uploaded_at)}` 
+                          : 'Not uploaded yet'}
+                      </p>
+                    </div>
                   </div>
-                  <h5 className="mb-3">Your Learner Permit is Ready</h5>
-                  <p className="text-muted mb-4">
-                    Click the button below to download your official learner permit document.
-                  </p>
                   
-                  <button
-                    className="btn download-btn btn-lg"
-                    onClick={handleDownloadPermit}
-                    disabled={downloading}
-                  >
-                    {downloading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                        Downloading...
-                      </>
-                    ) : (
-                      <>
-                        <i className="bi bi-download me-2"></i>
-                        Download Permit
-                      </>
-                    )}
-                  </button>
+                  <div className={`status-item ${permitRequest ? 'completed' : ''}`}>
+                    <div className="status-icon">
+                      <i className="bi bi-2-circle"></i>
+                    </div>
+                    <div className="status-text">
+                      <h6>School Submitted Request</h6>
+                      <p className="small text-muted">
+                        {permitRequest 
+                          ? `Submitted on ${formatDate(permitRequest.requested_at)}` 
+                          : 'Waiting for school submission'}
+                      </p>
+                    </div>
+                  </div>
                   
-                  <div className="mt-3">
-                    <small className="text-muted">
-                      <i className="bi bi-info-circle me-1"></i>
-                      Your permit will be downloaded as a PDF file.
-                    </small>
+                  <div className={`status-item ${permitRequest && (permitRequest.status === 'approved' || permitRequest.status === 'completed' || permitRequest.status === 'rejected') ? 'completed' : ''}`}>
+                    <div className="status-icon">
+                      <i className="bi bi-3-circle"></i>
+                    </div>
+                    <div className="status-text">
+                      <h6>Admin Review</h6>
+                      <p className="small text-muted">
+                        {!permitRequest ? 'Pending' : 
+                          permitRequest.status === 'pending' ? 'Under review' :
+                          permitRequest.status === 'rejected' ? `Rejected on ${formatDate(permitRequest.rejected_at)}` :
+                          `Approved on ${formatDate(permitRequest.approved_at)}`
+                        }
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className={`status-item ${permitRequest && permitRequest.status === 'completed' ? 'completed' : ''}`}>
+                    <div className="status-icon">
+                      <i className="bi bi-4-circle"></i>
+                    </div>
+                    <div className="status-text">
+                      <h6>Permit Document Available</h6>
+                      <p className="small text-muted">
+                        {!permitRequest ? 'Pending' : 
+                          permitRequest.status !== 'completed' ? 'Pending' :
+                          `Available since ${formatDate(permitRequest.permit_uploaded_at)}`
+                        }
+                      </p>
+                    </div>
                   </div>
                 </div>
-              ) : (
-                <div className="download-section">
-                  <div className="mb-3">
-                    <i className="bi bi-file-earmark-x permit-unavailable-icon"></i>
-                  </div>
-                  <h5 className="mb-3 text-muted">Permit Not Available</h5>
-                  <p className="text-muted mb-4">
-                    Your learner permit has not been uploaded yet. Please contact your school for assistance.
-                  </p>
-                  
-                  <div className="alert alert-info" role="alert">
-                    <i className="bi bi-info-circle me-2"></i>
-                    <strong>What to do next:</strong>
-                    <ul className="mb-0 mt-2 text-start">
-                      <li>Contact your driving school</li>
-                      <li>Verify your enrollment status</li>
-                      <li>Ensure all required documents are submitted</li>
-                      <li>Check back later for updates</li>
-                    </ul>
+                
+                <div className="current-status mt-4">
+                  <h6>Current Status:</h6>
+                  <div className="d-flex align-items-center">
+                    {getRequestStatusBadge(permitRequest)}
                   </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Status Alerts */}
-      {permitStatus === 'Inactive - Renewal Required' && (
-        <div className="row mb-4">
-          <div className="col-12">
-            <div className="alert alert-custom alert-warning" role="alert">
-              <i className="bi bi-exclamation-triangle me-2"></i>
-              <strong>Renewal Required:</strong> Your permit is currently inactive and needs renewal. 
-              Please contact your school immediately to renew your permit.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {permitStatus === 'Expired' && (
-        <div className="row mb-4">
-          <div className="col-12">
-            <div className="alert alert-custom alert-danger" role="alert">
-              <i className="bi bi-x-circle me-2"></i>
-              <strong>Permit Expired:</strong> Your permit has expired and is no longer valid. 
-              Please contact your school to obtain a new permit.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {permitDaysRemaining && permitDaysRemaining <= 7 && permitStatus === 'Active' && (
-        <div className="row mb-4">
-          <div className="col-12">
-            <div className="alert alert-custom alert-warning" role="alert">
-              <i className="bi bi-clock me-2"></i>
-              <strong>Renewal Reminder:</strong> Your permit will require renewal in {permitDaysRemaining} days. 
-              Please contact your school to arrange renewal.
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Instructions */}
-      <div className="row">
-        <div className="col-12">
-          <div className="card">
-            <div className="card-header">
-              <h5 className="card-title mb-0">
-                <i className="bi bi-question-circle me-2"></i>
-                Important Information
-              </h5>
-            </div>
-            <div className="card-body">
-              <div className="row">
-                <div className="col-md-6">
-                  <h6 className="text-primary">
-                    <i className="bi bi-shield-check me-2"></i>
-                    Permit Usage
-                  </h6>
-                  <ul className="list-unstyled">
-                    <li><i className="bi bi-check text-success me-2"></i>Always carry your permit while driving</li>
-                    <li><i className="bi bi-check text-success me-2"></i>Valid for supervised driving only</li>
-                    <li><i className="bi bi-check text-success me-2"></i>Must be renewed every 3 months</li>
-                    <li><i className="bi bi-check text-success me-2"></i>Expires after 9 months total</li>
-                  </ul>
+            
+            <div className="card info-card">
+              <div className="card-header">
+                <h4 className="mb-0">Important Information</h4>
+              </div>
+              <div className="card-body">
+                <div className="info-item mb-3">
+                  <h6><i className="bi bi-info-circle me-2"></i>Permit Renewal</h6>
+                  <p className="small">Your permit must be renewed every 3 months and is valid for a total of 9 months.</p>
                 </div>
-                <div className="col-md-6">
-                  <h6 className="text-primary">
-                    <i className="bi bi-telephone me-2"></i>
-                    Need Help?
-                  </h6>
-                  <ul className="list-unstyled">
-                    <li><i className="bi bi-arrow-right text-primary me-2"></i>Contact your driving school</li>
-                    <li><i className="bi bi-arrow-right text-primary me-2"></i>Check your email for updates</li>
-                    <li><i className="bi bi-arrow-right text-primary me-2"></i>Visit the school office</li>
-                    <li><i className="bi bi-arrow-right text-primary me-2"></i>Call the support hotline</li>
-                  </ul>
+                <div className="info-item mb-3">
+                  <h6><i className="bi bi-shield-exclamation me-2"></i>Always Carry Your Permit</h6>
+                  <p className="small">Always have your learner permit with you when driving or practicing.</p>
+                </div>
+                <div className="info-item">
+                  <h6><i className="bi bi-question-circle me-2"></i>Need Help?</h6>
+                  <p className="small">Contact your school administrator or the driving authority for assistance.</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 };
