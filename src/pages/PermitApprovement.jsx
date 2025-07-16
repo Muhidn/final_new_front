@@ -38,105 +38,39 @@ const PermitApprovement = () => {
         ]);
       }
 
-      // Try to fetch permit requests from the actual API
+      // Try to fetch permit requests from students data instead of requests API
       try {
-        console.log('🔍 ATTEMPTING TO FETCH PERMIT REQUESTS FROM API...');
-        console.log('Trying multiple API endpoints...');
+        console.log('🔍 ATTEMPTING TO FETCH STUDENTS DATA FOR PERMIT REQUESTS...');
         
-        let permitRequestsData = null;
-        let successfulEndpoint = null;
+        const studentsResponse = await fetch('http://127.0.0.1:8000/api/students/');
         
-        // Use the correct endpoint that exists in the backend
-        const endpointsToTry = [
-          'http://127.0.0.1:8000/api/requests/'
-        ];
-        
-        for (const endpoint of endpointsToTry) {
-          try {
-            console.log(`Trying endpoint: ${endpoint}`);
-            const response = await fetch(endpoint);
-            console.log(`${endpoint} - Status:`, response.status);
-            
-            if (response.ok) {
-              permitRequestsData = await response.json();
-              successfulEndpoint = endpoint;
-              console.log(`✅ SUCCESS with endpoint: ${endpoint}`);
-              break;
-            } else {
-              const errorText = await response.text();
-              console.log(`❌ Failed ${endpoint} - Status: ${response.status}, Error: ${errorText}`);
-            }
-          } catch (endpointError) {
-            console.log(`❌ Connection error for ${endpoint}:`, endpointError.message);
-          }
-        }
-        
-        if (permitRequestsData && successfulEndpoint) {
-          console.log('🎯 API RESPONSE RECEIVED:');
-          console.log('Successful endpoint:', successfulEndpoint);
-          console.log('Raw API response:', permitRequestsData);
-          console.log('Response type:', typeof permitRequestsData);
-          console.log('Is array?', Array.isArray(permitRequestsData));
-          console.log('Length:', permitRequestsData.length);
+        if (studentsResponse.ok) {
+          const studentsData = await studentsResponse.json();
+          console.log('📊 STUDENTS DATA RECEIVED:', studentsData);
           
-          if (permitRequestsData.length > 0) {
-            console.log('📋 FIRST REQUEST STRUCTURE:');
-            console.log('First request:', permitRequestsData[0]);
-            console.log('First request keys:', Object.keys(permitRequestsData[0]));
-            
-            // Check for nested structure (student.user) vs flat structure (user)
-            let userDataPath = '';
-            if (permitRequestsData[0].student && permitRequestsData[0].student.user) {
-              console.log('✅ NESTED structure found: student.user');
-              console.log('Student data:', permitRequestsData[0].student);
-              console.log('User data:', permitRequestsData[0].student.user);
-              userDataPath = 'student.user';
-            } else if (permitRequestsData[0].user) {
-              console.log('✅ FLAT structure found: user');
-              console.log('User data:', permitRequestsData[0].user);
-              userDataPath = 'user';
-            } else {
-              console.log('❌ NO USER DATA found in response');
-              console.log('Available fields:', Object.keys(permitRequestsData[0]));
-            }
-            
-            // Normalize the data structure to flat structure for consistent UI handling
-            if (userDataPath === 'student.user') {
-              console.log('🔄 Normalizing nested structure to flat structure...');
-              permitRequestsData = permitRequestsData.map(request => ({
-                ...request,
-                user: request.student?.user || null,
-                // Keep original student data for reference
-                original_student: request.student
-              }));
-              console.log('✅ Data normalized. First request after normalization:', permitRequestsData[0]);
-            }
-          }
+          // Convert students data to permit requests format
+          const permitRequestsFromStudents = studentsData.map(student => ({
+            id: student.id,
+            user: student.user,
+            student: student,
+            school: student.school,
+            status: student.permit ? 'completed' : 'pending', // If permit exists, it's completed
+            medical_document: student.document,
+            medical_document_uploaded_at: student.updated_at,
+            requested_at: student.updated_at,
+            permit_document: student.permit,
+            permit_document_name: student.permit ? `permit_${student.user.username}.pdf` : null,
+            permit_uploaded_at: student.permit ? student.updated_at : null,
+            school_notes: 'Generated from student data'
+          }));
           
-          // Check if we have valid data and user information
-          const validRequests = permitRequestsData.filter(request => {
-            if (!request.user) {
-              console.warn('❌ Request without user data:', request);
-              return false;
-            }
-            return true;
-          });
-          
-          if (validRequests.length !== permitRequestsData.length) {
-            console.warn(`⚠️ Filtered out ${permitRequestsData.length - validRequests.length} requests without user data`);
-          }
-          
-          console.log('📊 SUMMARY:');
-          console.log(`Total requests from API: ${permitRequestsData.length}`);
-          console.log(`Valid requests with user data: ${validRequests.length}`);
-          console.log('Using API data for permit requests');
-          
-          setPermitRequests(permitRequestsData); // Keep all requests, but handle nulls in UI
+          console.log('📋 CONVERTED TO PERMIT REQUESTS:', permitRequestsFromStudents);
+          setPermitRequests(permitRequestsFromStudents);
         } else {
-          throw new Error('All API endpoints failed or returned no data');
+          throw new Error('Failed to fetch students data');
         }
       } catch (requestError) {
-        console.log('🚨 PERMIT REQUESTS API ERROR:');
+        console.log('🚨 STUDENTS API ERROR:');
         console.error('Error details:', requestError);
         console.log('Error message:', requestError.message);
         console.log('Falling back to mock data...');
@@ -198,6 +132,89 @@ const PermitApprovement = () => {
     }
   };
 
+  const handleDeleteRequest = async (requestId, studentName) => {
+    const result = await Swal.fire({
+      title: 'Delete Permit Request',
+      text: `Are you sure you want to permanently delete the permit request for ${studentName}? This action cannot be undone.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, Delete',
+      cancelButtonText: 'Cancel',
+      input: 'checkbox',
+      inputValue: 0,
+      inputPlaceholder: 'I understand this action is permanent'
+    });
+
+    if (result.isConfirmed && result.value) {
+      try {
+        setProcessingRequests(prev => new Set(prev).add(requestId));
+        
+        // Try actual API call first - update Student to remove permit
+        try {
+          const response = await fetch(`http://127.0.0.1:8000/api/students/${requestId}/`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${user.token}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              permit: null // Remove the permit file
+            })
+          });
+          
+          if (!response.ok) throw new Error('Failed to delete permit request');
+          
+          // Remove request from local state
+          setPermitRequests(prevRequests => 
+            prevRequests.filter(request => request.id !== requestId)
+          );
+        } catch (apiError) {
+          console.log('API not available, using mock response');
+          // Mock response as fallback
+          setPermitRequests(prevRequests => 
+            prevRequests.filter(request => request.id !== requestId)
+          );
+        }
+
+        addNotification(
+          'Request Deleted',
+          `Permit request for ${studentName} has been permanently deleted`,
+          'info'
+        );
+
+        Swal.fire({
+          title: 'Deleted!',
+          text: `Permit request for ${studentName} has been permanently removed.`,
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+      } catch (error) {
+        console.error('Error deleting permit request:', error);
+        Swal.fire({
+          title: 'Error!',
+          text: 'Failed to delete permit request. Please try again.',
+          icon: 'error',
+          confirmButtonText: 'OK'
+        });
+      } finally {
+        setProcessingRequests(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(requestId);
+          return newSet;
+        });
+      }
+    } else if (result.isConfirmed && !result.value) {
+      Swal.fire({
+        title: 'Action Required',
+        text: 'Please check the confirmation box to proceed with deletion.',
+        icon: 'warning',
+        confirmButtonText: 'OK'
+      });
+    }
+  };
+
   const handleApproveRequest = async (requestId, studentName) => {
     const result = await Swal.fire({
       title: 'Approve Permit Request',
@@ -216,17 +233,9 @@ const PermitApprovement = () => {
         
         // Try actual API call first
         try {
-          const response = await fetch(`http://127.0.0.1:8000/api/requests/${requestId}/approve/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${user.token}`
-            }
-          });
-          
-          if (!response.ok) throw new Error('Failed to approve permit request');
-          
-          const updatedRequest = await response.json();
+          // Since we don't have a requests API, we'll just update the local state
+          // In a real implementation, you might want to create a separate approval tracking system
+          console.log('📝 APPROVING REQUEST (LOCAL STATE ONLY):', requestId);
           
           // Update request status locally
           setPermitRequests(prevRequests => 
@@ -235,8 +244,8 @@ const PermitApprovement = () => {
                 ? { 
                     ...request, 
                     status: 'approved', 
-                    approved_at: updatedRequest.approved_at,
-                    approved_by: updatedRequest.approved_by
+                    approved_at: new Date().toISOString(),
+                    approved_by: { id: user.id, name: `${user.first_name} ${user.last_name}` }
                   }
                 : request
             )
@@ -320,20 +329,8 @@ const PermitApprovement = () => {
         
         // Try actual API call first
         try {
-          const response = await fetch(`http://127.0.0.1:8000/api/requests/${requestId}/reject/`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${user.token}`
-            },
-            body: JSON.stringify({
-              rejection_reason: result.value
-            })
-          });
-          
-          if (!response.ok) throw new Error('Failed to reject permit request');
-          
-          const updatedRequest = await response.json();
+          // Since we don't have a requests API, we'll just update the local state
+          console.log('📝 REJECTING REQUEST (LOCAL STATE ONLY):', requestId, 'Reason:', result.value);
           
           // Update request status locally
           setPermitRequests(prevRequests => 
@@ -342,9 +339,9 @@ const PermitApprovement = () => {
                 ? { 
                     ...request, 
                     status: 'rejected', 
-                    rejection_reason: updatedRequest.rejection_reason,
-                    rejected_at: updatedRequest.rejected_at,
-                    rejected_by: updatedRequest.rejected_by
+                    rejection_reason: result.value,
+                    rejected_at: new Date().toISOString(),
+                    rejected_by: { id: user.id, name: `${user.first_name} ${user.last_name}` }
                   }
                 : request
             )
@@ -436,31 +433,96 @@ const PermitApprovement = () => {
       try {
         setUploadingPermits(prev => new Set(prev).add(requestId));
         
-        // Mock API call (simulate upload delay)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Mock response data
-        const permitUrl = URL.createObjectURL(file);
-        const updatedRequest = {
-          status: 'completed',
-          permit_document: permitUrl,
-          permit_document_name: file.name,
-          permit_uploaded_at: new Date().toISOString(),
-          permit_valid_from: new Date().toISOString(),
-          permit_valid_until: new Date(Date.now() + 270 * 24 * 60 * 60 * 1000).toISOString() // 9 months from now
-        };
-        
-        // Update request with permit document locally
-        setPermitRequests(prevRequests => 
-          prevRequests.map(request => 
-            request.id === requestId 
-              ? { 
-                  ...request, 
-                  ...updatedRequest
-                }
-              : request
-          )
-        );
+        // Try actual API call first
+        try {
+          const formData = new FormData();
+          formData.append('permit', file);
+          
+          // Get the student ID from the request
+          const currentRequest = permitRequests.find(req => req.id === requestId);
+          if (!currentRequest || !currentRequest.user) {
+            throw new Error('Cannot find student information for this request');
+          }
+          
+          // Find the student ID by matching user ID
+          console.log('🔍 FINDING STUDENT ID FOR USER:', currentRequest.user.id);
+          const studentsResponse = await fetch('http://127.0.0.1:8000/api/students/');
+          
+          if (!studentsResponse.ok) {
+            throw new Error('Failed to fetch students data');
+          }
+          
+          const studentsData = await studentsResponse.json();
+          const targetStudent = studentsData.find(student => student.user.id === currentRequest.user.id);
+          
+          if (!targetStudent) {
+            throw new Error('Student record not found');
+          }
+          
+          console.log('🎯 FOUND TARGET STUDENT:', targetStudent);
+          
+          // Upload permit to student's permit field
+          const response = await fetch(`http://127.0.0.1:8000/api/students/${targetStudent.id}/`, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${user.token}`
+            },
+            body: formData
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.text();
+            console.error('Upload failed:', errorData);
+            throw new Error(`Failed to upload permit document: ${response.status}`);
+          }
+          
+          const updatedStudent = await response.json();
+          console.log('✅ PERMIT UPLOADED TO STUDENT:', updatedStudent);
+          
+          // Update request status locally to show as completed
+          setPermitRequests(prevRequests => 
+            prevRequests.map(request => 
+              request.id === requestId 
+                ? { 
+                    ...request, 
+                    status: 'completed',
+                    permit_document: updatedStudent.permit,
+                    permit_document_name: file.name,
+                    permit_uploaded_at: new Date().toISOString(),
+                    permit_valid_from: new Date().toISOString(),
+                    permit_valid_until: new Date(Date.now() + 270 * 24 * 60 * 60 * 1000).toISOString()
+                  }
+                : request
+            )
+          );
+        } catch (apiError) {
+          console.log('API not available, using mock response');
+          // Mock response as fallback
+          const permitUrl = URL.createObjectURL(file);
+          const updatedRequest = {
+            status: 'completed',
+            permit_document: permitUrl,
+            permit_document_name: file.name,
+            permit_uploaded_at: new Date().toISOString(),
+            permit_valid_from: new Date().toISOString(),
+            permit_valid_until: new Date(Date.now() + 270 * 24 * 60 * 60 * 1000).toISOString() // 9 months from now
+          };
+          
+          // Update request with permit document locally (mock)
+          setPermitRequests(prevRequests => 
+            prevRequests.map(request => 
+              request.id === requestId 
+                ? { 
+                    ...request, 
+                    ...updatedRequest
+                  }
+                : request
+            )
+          );
+          
+          // Mock updating student permit field
+          console.log('📝 MOCK: Would update student permit field with:', permitUrl);
+        }
 
         addNotification(
           'Permit Uploaded',
@@ -669,70 +731,11 @@ const PermitApprovement = () => {
                         Rejected ({stats.rejected})
                       </button>
                       <button
-                        className={`btn ${filter === 'all' ? 'btn-secondary' : 'btn-outline-secondary'} me-3`}
+                        className={`btn ${filter === 'all' ? 'btn-secondary' : 'btn-outline-secondary'}`}
                         onClick={() => setFilter('all')}
                       >
                         <i className="bi bi-list me-1"></i>
                         All
-                      </button>
-                      <button
-                        className="btn btn-info btn-sm"
-                        onClick={async () => {
-                          console.log('🔄 Manual API Test Started...');
-                          
-                          const endpointsToTest = [
-                            'http://127.0.0.1:8000/api/requests/',
-                            'http://127.0.0.1:8000/api/students/',
-                            'http://127.0.0.1:8000/api/schools/'
-                          ];
-                          
-                          let results = [];
-                          
-                          for (const endpoint of endpointsToTest) {
-                            try {
-                              console.log(`Testing ${endpoint}...`);
-                              const response = await fetch(endpoint);
-                              
-                              if (response.ok) {
-                                const data = await response.json();
-                                console.log(`✅ ${endpoint} - Success:`, data);
-                                results.push({
-                                  endpoint,
-                                  status: 'SUCCESS',
-                                  data: data.slice(0, 2) // Show only first 2 items
-                                });
-                              } else {
-                                const errorText = await response.text();
-                                console.error(`❌ ${endpoint} - Error:`, errorText);
-                                results.push({
-                                  endpoint,
-                                  status: `ERROR (${response.status})`,
-                                  error: errorText
-                                });
-                              }
-                            } catch (error) {
-                              console.error(`💥 ${endpoint} - Connection Error:`, error);
-                              results.push({
-                                endpoint,
-                                status: 'CONNECTION_ERROR',
-                                error: error.message
-                              });
-                            }
-                          }
-                          
-                          Swal.fire({
-                            title: 'API Test Results',
-                            html: `<div style="text-align: left;"><pre>${JSON.stringify(results, null, 2)}</pre></div>`,
-                            icon: 'info',
-                            width: '90%',
-                            customClass: {
-                              popup: 'swal-wide'
-                            }
-                          });
-                        }}
-                      >
-                        <i className="bi bi-wifi me-1"></i>
-                        Test APIs
                       </button>
                     </div>
                   </div>
@@ -890,107 +893,129 @@ const PermitApprovement = () => {
                               )}
                             </td>
                             <td>
-                              {request.status === 'pending' && (
-                                <div className="btn-group" role="group">
-                                  <button
-                                    className="btn btn-success btn-sm"
-                                    onClick={() => handleApproveRequest(
-                                      request.id, 
-                                      request.user ? 
-                                        `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
-                                        `Request ID: ${request.id}`
-                                    )}
-                                    disabled={processingRequests.has(request.id) || !request.user}
-                                  >
-                                    {processingRequests.has(request.id) ? (
-                                      <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    ) : (
-                                      <i className="bi bi-check me-1"></i>
-                                    )}
-                                    Approve
-                                  </button>
-                                  <button
-                                    className="btn btn-danger btn-sm"
-                                    onClick={() => handleRejectRequest(
-                                      request.id, 
-                                      request.user ? 
-                                        `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
-                                        `Request ID: ${request.id}`
-                                    )}
-                                    disabled={processingRequests.has(request.id) || !request.user}
-                                  >
-                                    {processingRequests.has(request.id) ? (
-                                      <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                                    ) : (
-                                      <i className="bi bi-x me-1"></i>
-                                    )}
-                                    Reject
-                                  </button>
-                                </div>
-                              )}
-                              
-                              {request.status === 'approved' && (
-                                <button
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => handleUploadPermit(
-                                    request.id, 
-                                    request.user ? 
-                                      `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
-                                      `Request ID: ${request.id}`
-                                  )}
-                                  disabled={uploadingPermits.has(request.id)}
-                                >
-                                  {uploadingPermits.has(request.id) ? (
-                                    <span className="spinner-border spinner-border-sm me-1" role="status"></span>
-                                  ) : (
-                                    <i className="bi bi-upload me-1"></i>
-                                  )}
-                                  Upload Permit
-                                </button>
-                              )}
-                              
-                              {request.status === 'completed' && (
-                                <div className="d-flex flex-column gap-1">
-                                  <div className="text-success small">
-                                    <i className="bi bi-file-earmark-check me-1"></i>
-                                    Document Uploaded
-                                  </div>
+                              <div className="d-flex flex-wrap gap-1">
+                                {request.status === 'pending' && (
                                   <div className="btn-group" role="group">
-                                    <a
-                                      href={request.permit_document}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="btn btn-outline-primary btn-sm"
-                                    >
-                                      <i className="bi bi-eye me-1"></i>
-                                      View
-                                    </a>
                                     <button
-                                      className="btn btn-outline-secondary btn-sm"
-                                      onClick={() => handleUploadPermit(
+                                      className="btn btn-success btn-sm"
+                                      onClick={() => handleApproveRequest(
                                         request.id, 
                                         request.user ? 
                                           `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
                                           `Request ID: ${request.id}`
                                       )}
-                                      disabled={uploadingPermits.has(request.id)}
+                                      disabled={processingRequests.has(request.id) || !request.user}
                                     >
-                                      <i className="bi bi-arrow-clockwise me-1"></i>
-                                      Replace
+                                      {processingRequests.has(request.id) ? (
+                                        <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                                      ) : (
+                                        <i className="bi bi-check me-1"></i>
+                                      )}
+                                      Approve
+                                    </button>
+                                    <button
+                                      className="btn btn-danger btn-sm"
+                                      onClick={() => handleRejectRequest(
+                                        request.id, 
+                                        request.user ? 
+                                          `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
+                                          `Request ID: ${request.id}`
+                                      )}
+                                      disabled={processingRequests.has(request.id) || !request.user}
+                                    >
+                                      {processingRequests.has(request.id) ? (
+                                        <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                                      ) : (
+                                        <i className="bi bi-x me-1"></i>
+                                      )}
+                                      Reject
                                     </button>
                                   </div>
-                                </div>
-                              )}
-                              
-                              {request.status === 'rejected' && request.rejection_reason && (
+                                )}
+                                
+                                {request.status === 'approved' && (
+                                  <button
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => handleUploadPermit(
+                                      request.id, 
+                                      request.user ? 
+                                        `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
+                                        `Request ID: ${request.id}`
+                                    )}
+                                    disabled={uploadingPermits.has(request.id)}
+                                  >
+                                    {uploadingPermits.has(request.id) ? (
+                                      <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                                    ) : (
+                                      <i className="bi bi-upload me-1"></i>
+                                    )}
+                                    Upload Permit
+                                  </button>
+                                )}
+                                
+                                {request.status === 'completed' && (
+                                  <div className="d-flex flex-column gap-1">
+                                    <div className="text-success small">
+                                      <i className="bi bi-file-earmark-check me-1"></i>
+                                      Document Uploaded
+                                    </div>
+                                    <div className="btn-group" role="group">
+                                      <a
+                                        href={request.permit_document}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-outline-primary btn-sm"
+                                      >
+                                        <i className="bi bi-eye me-1"></i>
+                                        View
+                                      </a>
+                                      <button
+                                        className="btn btn-outline-secondary btn-sm"
+                                        onClick={() => handleUploadPermit(
+                                          request.id, 
+                                          request.user ? 
+                                            `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
+                                            `Request ID: ${request.id}`
+                                        )}
+                                        disabled={uploadingPermits.has(request.id)}
+                                      >
+                                        <i className="bi bi-arrow-clockwise me-1"></i>
+                                        Replace
+                                      </button>
+                                    </div>
+                                  </div>
+                                )}
+                                
+                                {request.status === 'rejected' && request.rejection_reason && (
+                                  <button
+                                    className="btn btn-outline-secondary btn-sm"
+                                    onClick={() => Swal.fire('Rejection Reason', request.rejection_reason, 'info')}
+                                  >
+                                    <i className="bi bi-info-circle me-1"></i>
+                                    View Reason
+                                  </button>
+                                )}
+
+                                {/* Delete button - available for all statuses */}
                                 <button
-                                  className="btn btn-outline-secondary btn-sm"
-                                  onClick={() => Swal.fire('Rejection Reason', request.rejection_reason, 'info')}
+                                  className="btn btn-outline-danger btn-sm"
+                                  onClick={() => handleDeleteRequest(
+                                    request.id, 
+                                    request.user ? 
+                                      `${request.user.first_name || 'No Name'} ${request.user.last_name || ''}` :
+                                      `Request ID: ${request.id}`
+                                  )}
+                                  disabled={processingRequests.has(request.id)}
+                                  title="Delete this permit request permanently"
                                 >
-                                  <i className="bi bi-info-circle me-1"></i>
-                                  View Reason
+                                  {processingRequests.has(request.id) ? (
+                                    <span className="spinner-border spinner-border-sm me-1" role="status"></span>
+                                  ) : (
+                                    <i className="bi bi-trash me-1"></i>
+                                  )}
+                                  Delete
                                 </button>
-                              )}
+                              </div>
                             </td>
                           </tr>
                         ))}

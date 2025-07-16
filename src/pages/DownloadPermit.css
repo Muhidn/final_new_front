@@ -404,6 +404,64 @@
   color: #6c757d;
 }
 
+/* Permit Actions Section */
+.permit-actions .btn {
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.permit-actions .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.permit-actions .btn-outline-primary {
+  border: 2px solid #007bff;
+  color: #007bff;
+}
+
+.permit-actions .btn-outline-primary:hover {
+  background-color: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.permit-actions .btn-primary {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+}
+
+.permit-actions .btn-primary:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #007bff 100%);
+}
+
+/* Permit Info Section */
+.permit-info {
+  border: 1px solid #dee2e6;
+  background-color: #f8f9fa !important;
+}
+
+.permit-info .fs-3 {
+  margin-bottom: 0.5rem;
+}
+
+.permit-info p.small {
+  margin-bottom: 0;
+  color: #6c757d;
+}
+
+.permit-info p.small strong {
+  color: #495057;
+}
+
+/* View/Download Button Icons */
+.btn .bi {
+  font-size: 1.1em;
+}
+
+/* Responsive adjustments for permit actions */
 @media (max-width: 768px) {
   .permit-card .card-body {
     padding: 1rem;
@@ -421,5 +479,14 @@
   .permit-file-icon,
   .permit-unavailable-icon {
     font-size: 3rem;
+  }
+  
+  .permit-actions .row.g-2 {
+    gap: 0.5rem !important;
+  }
+  
+  .permit-actions .btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
   }
 }

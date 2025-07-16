@@ -22,6 +22,23 @@ const DownloadPermit = () => {
       calculatePermitStatus();
     }
   }, [permitRequest]);
+                      <p className="text-muted">
+                        Your learner permit has been approved and is available for viewing and download.
+                      </p>
+                    </div>
+
+                    <div className="row">aysRemaining, setPermitDaysRemaining] = useState(null);
+  const [permitValidityDays, setPermitValidityDays] = useState(null);
+
+  useEffect(() => {
+    fetchStudentData();
+  }, []);
+
+  useEffect(() => {
+    if (permitRequest && permitRequest.status === 'completed') {
+      calculatePermitStatus();
+    }
+  }, [permitRequest]);
 
   const fetchPermitFromRequestsAPI = async (currentStudent) => {
     try {
@@ -548,7 +565,7 @@ const DownloadPermit = () => {
                     </div>
                   </div>
                 ) : (
-                  <>
+                  <div>
                     {/* Permit Available Header */}
                     <div className="text-center mb-4">
                       <div className="permit-status-icon active">
@@ -560,102 +577,103 @@ const DownloadPermit = () => {
                       </p>
                     </div>
 
+                    </div>
+
                     <div className="row">
-                      <div className="col-md-6">
-                        <div className="permit-status-section text-center mb-4">
-                          <div className={`permit-status-icon ${permitStatus.toLowerCase() === 'active' ? 'active' : ''}`}>
-                            <i className={`bi ${getStatusIcon(permitStatus)}`}></i>
-                          </div>
-                          <h5 className="mt-3">Permit Status</h5>
-                          <span className={getStatusBadgeClass(permitStatus)}>
-                            {permitStatus}
-                          </span>
+                    <div className="col-md-6">
+                      <div className="permit-status-section text-center mb-4">
+                        <div className={`permit-status-icon ${permitStatus.toLowerCase() === 'active' ? 'active' : ''}`}>
+                          <i className={`bi ${getStatusIcon(permitStatus)}`}></i>
                         </div>
+                        <h5 className="mt-3">Permit Status</h5>
+                        <span className={getStatusBadgeClass(permitStatus)}>
+                          {permitStatus}
+                        </span>
                       </div>
-                      <div className="col-md-6">
-                        <div className="validity-info mb-4">
-                          <h5>Validity Information</h5>
-                          <ul className="list-group">
+                    </div>
+                    <div className="col-md-6">
+                      <div className="validity-info mb-4">
+                        <h5>Validity Information</h5>
+                        <ul className="list-group">
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Issue Date
+                            <span>{formatDate(permitRequest.permit_valid_from)}</span>
+                          </li>
+                          <li className="list-group-item d-flex justify-content-between align-items-center">
+                            Expiration Date
+                            <span>{formatDate(permitRequest.permit_valid_until)}</span>
+                          </li>
+                          {permitValidityDays && (
                             <li className="list-group-item d-flex justify-content-between align-items-center">
-                              Issue Date
-                              <span>{formatDate(permitRequest.permit_valid_from)}</span>
+                              Days Until Expiration
+                              <span className="badge bg-primary rounded-pill">{permitValidityDays}</span>
                             </li>
+                          )}
+                          {permitDaysRemaining && (
                             <li className="list-group-item d-flex justify-content-between align-items-center">
-                              Expiration Date
-                              <span>{formatDate(permitRequest.permit_valid_until)}</span>
+                              Days Until Next Renewal
+                              <span className="badge bg-warning rounded-pill">{permitDaysRemaining}</span>
                             </li>
-                            {permitValidityDays && (
-                              <li className="list-group-item d-flex justify-content-between align-items-center">
-                                Days Until Expiration
-                                <span className="badge bg-primary rounded-pill">{permitValidityDays}</span>
-                              </li>
-                            )}
-                            {permitDaysRemaining && (
-                              <li className="list-group-item d-flex justify-content-between align-items-center">
-                                Days Until Next Renewal
-                                <span className="badge bg-warning rounded-pill">{permitDaysRemaining}</span>
-                              </li>
-                            )}
-                          </ul>
-                        </div>
+                          )}
+                        </ul>
                       </div>
-                      <div className="col-12">
-                        <div className="permit-actions mt-2 mb-3">
-                          <div className="row g-2">
-                            <div className="col-md-6">
-                              <button
-                                className="btn btn-outline-primary btn-lg w-100"
-                                onClick={handleViewPermit}
-                                disabled={!permitRequest.permit_document}
-                                title="View your permit document in a new tab"
-                              >
-                                <i className="bi bi-eye me-2"></i>
-                                View Permit
-                              </button>
-                            </div>
-                            <div className="col-md-6">
-                              <button
-                                className="btn btn-primary btn-lg w-100"
-                                onClick={handleDownloadPermit}
-                                disabled={downloading || !permitRequest.permit_document}
-                                title="Download your permit document"
-                              >
-                                {downloading ? (
-                                  <>
-                                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                                    Downloading...
-                                  </>
-                                ) : (
-                                  <>
-                                    <i className="bi bi-download me-2"></i>
-                                    Download Permit
-                                  </>
-                                )}
-                              </button>
-                            </div>
+                    </div>
+                    <div className="col-12">
+                      <div className="permit-actions mt-2 mb-3">
+                        <div className="row g-2">
+                          <div className="col-md-6">
+                            <button
+                              className="btn btn-outline-primary btn-lg w-100"
+                              onClick={handleViewPermit}
+                              disabled={!permitRequest.permit_document}
+                              title="View your permit document in a new tab"
+                            >
+                              <i className="bi bi-eye me-2"></i>
+                              View Permit
+                            </button>
                           </div>
-                          
-                          {/* Additional permit information */}
-                          <div className="permit-info mt-3 p-3 bg-light rounded">
-                            <div className="row text-center">
-                              <div className="col-6">
-                                <i className="bi bi-file-earmark-pdf text-primary fs-3"></i>
-                                <p className="small mb-0 mt-1">
-                                  <strong>Document Type:</strong><br/>
-                                  {permitRequest.permit_document_name || 'Learner Permit'}
-                                </p>
-                              </div>
-                              <div className="col-6">
-                                <i className="bi bi-calendar-check text-success fs-3"></i>
-                                <p className="small mb-0 mt-1">
-                                  <strong>Issued On:</strong><br/>
-                                  {formatDate(permitRequest.permit_uploaded_at)}
-                                </p>
-                              </div>
+                          <div className="col-md-6">
+                            <button
+                              className="btn btn-primary btn-lg w-100"
+                              onClick={handleDownloadPermit}
+                              disabled={downloading || !permitRequest.permit_document}
+                              title="Download your permit document"
+                            >
+                              {downloading ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                                  Downloading...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="bi bi-download me-2"></i>
+                                  Download Permit
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                        
+                        {/* Additional permit information */}
+                        <div className="permit-info mt-3 p-3 bg-light rounded">
+                          <div className="row text-center">
+                            <div className="col-6">
+                              <i className="bi bi-file-earmark-pdf text-primary fs-3"></i>
+                              <p className="small mb-0 mt-1">
+                                <strong>Document Type:</strong><br/>
+                                {permitRequest.permit_document_name || 'Learner Permit'}
+                              </p>
+                            </div>
+                            <div className="col-6">
+                              <i className="bi bi-calendar-check text-success fs-3"></i>
+                              <p className="small mb-0 mt-1">
+                                <strong>Issued On:</strong><br/>
+                                {formatDate(permitRequest.permit_uploaded_at)}
+                              </p>
                             </div>
                           </div>
                         </div>
-                      </div>
+                      </div>                      </div>
                     </div>
                   </>
                 )}
