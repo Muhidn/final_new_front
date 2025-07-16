@@ -7,17 +7,21 @@ import './DashboardLayout.css';
 
 const DashboardLayout = ({ children }) => {
   const { user } = useContext(AuthContext);
-  // Only render sidebar if user is logged in
+  
   return (
     <div className="container-fluid p-0 dashboard-layout">
-      <Header />
-      <div className="row g-0 dashboard-main">
+      <div className="dashboard-header">
+        <Header />
+      </div>
+      <div className="dashboard-main">
         {user && (
-          <div className="col-12 col-md-3 col-lg-2 sidebar p-0">
+          <div className="sidebar">
             <Sidebar />
           </div>
         )}
-        <main className="col dashboard-content">{children}</main>
+        <main className={`dashboard-content ${!user ? 'no-sidebar' : ''}`}>
+          {children}
+        </main>
       </div>
     </div>
   );

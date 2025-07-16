@@ -1,0 +1,232 @@
+/* ManageStudents Page Styles */
+
+.manage-students-container {
+  min-height: calc(100vh - 120px);
+  background-color: #f8f9fa;
+  padding-top: 20px !important;
+}
+
+.students-card {
+  border: none !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 16px !important;
+}
+
+.students-card .card-header {
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%) !important;
+  border-bottom: 2px solid #e9ecef !important;
+  padding: 24px !important;
+}
+
+.students-table {
+  border: none !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+.students-table thead th {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+  border: none !important;
+  font-weight: 600 !important;
+  color: #495057 !important;
+  text-transform: uppercase !important;
+  font-size: 12px !important;
+  letter-spacing: 0.5px !important;
+  padding: 20px 16px !important;
+}
+
+.students-table tbody tr {
+  border: none !important;
+  border-bottom: 1px solid #f1f3f4 !important;
+  transition: all 0.2s ease !important;
+}
+
+.students-table tbody tr:hover {
+  background-color: #f8f9fa !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+.students-table tbody td {
+  border: none !important;
+  padding: 20px 16px !important;
+  vertical-align: middle !important;
+}
+
+.student-avatar {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: white !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  margin-right: 12px !important;
+}
+
+.status-badge {
+  border-radius: 20px !important;
+  padding: 6px 14px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.status-badge.bg-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.status-badge.bg-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+}
+
+.status-badge.bg-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+}
+
+.action-buttons .btn {
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  padding: 8px 12px !important;
+  transition: all 0.2s ease !important;
+  border: 1px solid transparent !important;
+}
+
+.action-buttons .btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.action-buttons .btn-outline-primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  border-color: #2563eb !important;
+}
+
+.action-buttons .btn-outline-danger:hover {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  border-color: #ef4444 !important;
+}
+
+.add-student-btn {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 12px 20px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3) !important;
+  transition: all 0.3s ease !important;
+}
+
+.add-student-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.4) !important;
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%) !important;
+}
+
+.school-filter {
+  border-radius: 10px !important;
+  border: 2px solid #e9ecef !important;
+  padding: 12px 16px !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.school-filter:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+.loading-container {
+  padding: 60px 20px !important;
+}
+
+.loading-container .spinner-border {
+  width: 48px !important;
+  height: 48px !important;
+  border-width: 4px !important;
+}
+
+.empty-state {
+  padding: 60px 20px !important;
+  color: #6b7280 !important;
+}
+
+.empty-state .bi {
+  font-size: 64px !important;
+  margin-bottom: 16px !important;
+  opacity: 0.3 !important;
+}
+
+/* Modal Improvements */
+.modal-content {
+  border: none !important;
+  border-radius: 16px !important;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2) !important;
+}
+
+.modal-header {
+  border-bottom: 2px solid #f1f3f4 !important;
+  padding: 24px !important;
+}
+
+.modal-body {
+  padding: 24px !important;
+}
+
+.modal-footer {
+  border-top: 2px solid #f1f3f4 !important;
+  padding: 20px 24px !important;
+}
+
+.form-control, .form-select {
+  border-radius: 8px !important;
+  border: 2px solid #e9ecef !important;
+  padding: 12px 16px !important;
+  transition: all 0.2s ease !important;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+}
+
+/* Page Header */
+.page-header {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%) !important;
+  color: white !important;
+  margin: -20px -15px 30px -15px !important;
+  padding: 30px 30px !important;
+  border-radius: 0 0 20px 20px !important;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .manage-students-container {
+    padding: 10px !important;
+  }
+  
+  .students-card .card-header {
+    padding: 16px !important;
+  }
+  
+  .students-table thead th,
+  .students-table tbody td {
+    padding: 12px 8px !important;
+    font-size: 12px !important;
+  }
+  
+  .student-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    font-size: 12px !important;
+  }
+  
+  .action-buttons .btn {
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+}

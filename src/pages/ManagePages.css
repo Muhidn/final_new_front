@@ -1,0 +1,363 @@
+/* Modern Management Pages Styling */
+.manage-students-container,
+.manage-lectures-page,
+.manage-schools-page {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Card Styling */
+.students-card,
+.lectures-card,
+.schools-card {
+  border: none !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.3s ease;
+}
+
+.students-card:hover,
+.lectures-card:hover,
+.schools-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Button Enhancements */
+.add-student-btn,
+.add-lecturer-btn,
+.add-admin-btn {
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+.add-student-btn:hover,
+.add-lecturer-btn:hover,
+.add-admin-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+/* Filter Container */
+.filter-container {
+  transition: all 0.3s ease;
+}
+
+.filter-container:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Statistics Card */
+.statistics-card {
+  transition: all 0.3s ease;
+}
+
+.statistics-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Table Enhancements */
+.students-table,
+.lectures-table,
+.admins-table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.students-table thead th,
+.lectures-table thead th,
+.admins-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Avatar Styling */
+.student-avatar,
+.lecturer-avatar,
+.admin-avatar {
+  transition: all 0.3s ease;
+}
+
+.student-avatar:hover,
+.lecturer-avatar:hover,
+.admin-avatar:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Badge Enhancements */
+.status-badge {
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  transition: all 0.3s ease;
+}
+
+.status-badge:hover {
+  transform: scale(1.05);
+}
+
+/* Action Buttons */
+.action-buttons .btn {
+  transition: all 0.3s ease;
+}
+
+.action-buttons .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Action Buttons Styling */
+.action-buttons {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-width: 120px !important;
+}
+
+.action-buttons .btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 45px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  transition: all 0.2s ease !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+}
+
+.action-buttons .btn:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.action-buttons .btn-outline-primary {
+  border-color: #667eea !important;
+  color: #667eea !important;
+}
+
+.action-buttons .btn-outline-primary:hover {
+  background-color: #667eea !important;
+  border-color: #667eea !important;
+  color: white !important;
+}
+
+.action-buttons .btn-outline-danger {
+  border-color: #dc3545 !important;
+  color: #dc3545 !important;
+}
+
+.action-buttons .btn-outline-danger:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+}
+
+/* Table Actions Column */
+.students-table td:last-child,
+.lectures-table td:last-child,
+.schools-table td:last-child {
+  min-width: 120px !important;
+  width: 120px !important;
+  text-align: center !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+}
+
+.students-table th:last-child,
+.lectures-table th:last-child,
+.schools-table th:last-child {
+  min-width: 120px !important;
+  width: 120px !important;
+  text-align: center !important;
+}
+
+/* Ensure table is responsive but actions are always visible */
+.table-responsive {
+  overflow-x: auto !important;
+}
+
+.table-responsive .table {
+  min-width: 100% !important;
+}
+
+/* Fix for Bootstrap Icons */
+.action-buttons .bi {
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+/* Loading States */
+.loading-container {
+  padding: 40px;
+  text-align: center;
+}
+
+.loading-container .spinner-border {
+  width: 3rem;
+  height: 3rem;
+}
+
+/* Empty State */
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #6c757d;
+}
+
+.empty-state i {
+  opacity: 0.5;
+  margin-bottom: 15px;
+}
+
+/* Modal Enhancements */
+.modal-content {
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.modal-header {
+  border-bottom: none;
+}
+
+.modal-footer {
+  border-top: 1px solid #e9ecef;
+}
+
+/* Form Enhancements */
+.form-floating > .form-control {
+  border: 2px solid #e9ecef;
+  transition: all 0.3s ease;
+}
+
+.form-floating > .form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+.form-floating > label {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Section Headers */
+.section-header {
+  border-bottom: 2px solid #f8f9fa;
+  padding-bottom: 10px;
+}
+
+/* Alert Enhancements */
+.alert {
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.alert-success {
+  background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+  color: #155724;
+}
+
+.alert-danger {
+  background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+  color: #721c24;
+}
+
+/* Responsive Enhancements */
+@media (max-width: 768px) {
+  .manage-students-container,
+  .manage-lectures-page,
+  .manage-schools-page {
+    padding: 10px;
+  }
+  
+  .card {
+    margin: 0 5px;
+  }
+  
+  .modal-lg {
+    max-width: 95%;
+  }
+  
+  .statistics-card {
+    margin-top: 15px;
+    margin-left: 0 !important;
+  }
+  
+  .filter-container {
+    margin-bottom: 15px;
+  }
+}
+
+/* Scrollbar Styling */
+.table-responsive::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+}
+
+/* Animation Classes */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Gradient Text */
+.gradient-text {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Custom Tooltip */
+.custom-tooltip {
+  position: relative;
+}
+
+.custom-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.custom-tooltip:hover::after {
+  opacity: 1;
+  visibility: visible;
+}
