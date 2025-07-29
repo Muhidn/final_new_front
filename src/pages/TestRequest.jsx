@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import Swal from 'sweetalert2';
+import { apiRequest } from '../services/apiService';
 import './TestRequest.css';
 
 const TestRequest = () => {
@@ -13,29 +14,46 @@ const TestRequest = () => {
   const [submitting, setSubmitting] = useState(false);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [existingRequests, setExistingRequests] = useState([]);
 
   useEffect(() => {
     fetchData();
+    fetchExistingRequests();
   }, []);
 
   useEffect(() => {
     if (students.length > 0 && attendances.length > 0) {
       calculateEligibleStudents();
     }
-  }, [students, attendances]);
+  }, [students, attendances, existingRequests]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
       
-      // Fetch students and attendances in parallel
+      // Fetch students and attendances in parallel - using real backend data
       const [studentsResponse, attendancesResponse] = await Promise.all([
-        fetch('http://127.0.0.1:8000/api/students/'),
-        fetch('http://127.0.0.1:8000/api/attendances/')
+        fetch('http://127.0.0.1:8000/api/students/', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        }),
+        fetch('http://127.0.0.1:8000/api/attendances/', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          },
+        })
       ]);
+
+      if (!studentsResponse.ok || !attendancesResponse.ok) {
+        throw new Error('Failed to fetch data from backend');
+      }
 
       const studentsData = await studentsResponse.json();
       const attendancesData = await attendancesResponse.json();
+
+      console.log('Real students data:', studentsData);
+      console.log('Real attendances data:', attendancesData);
 
       setStudents(studentsData);
       setAttendances(attendancesData);
@@ -43,12 +61,44 @@ const TestRequest = () => {
       console.error('Error fetching data:', error);
       Swal.fire({
         title: 'Error!',
-        text: 'Failed to fetch student data. Please try again.',
+        text: 'Failed to fetch student data. Please check if the backend is running.',
         icon: 'error',
         confirmButtonText: 'OK'
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchExistingRequests = async () => {
+    try {
+      console.log('Fetching existing test requests...');
+      
+      const response = await fetch('http://127.0.0.1:8000/api/tests/', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          console.log('Existing test requests fetched:', data);
+          setExistingRequests(data);
+          return;
+        }
+      } else {
+        console.log('Failed to fetch existing requests:', response.status, response.statusText);
+      }
+
+      // If the main API fails, set empty array to continue functioning
+      console.log('Setting empty array for existing requests');
+      setExistingRequests([]);
+      
+    } catch (error) {
+      console.error('Error fetching existing requests:', error);
+      setExistingRequests([]); // Set empty array on error to continue functioning
     }
   };
 
@@ -63,8 +113,14 @@ const TestRequest = () => {
       // Check permit status
       const permitStatus = calculatePermitStatus(student);
       
+      // Check if student already has a test request
+      // Handle both old format (req.student.id) and new format (req.student_id)
+      const existingRequest = existingRequests.find(req => 
+        (req.student && req.student.id === student.id) || 
+        (req.student_id === student.id)
+      );
+      
       // Determine eligibility - only based on attendance and permit status
-      // Test results are pending until after the test is completed
       const isEligible = presentDays === 1 && permitStatus === 'Active';
 
       return {
@@ -74,7 +130,9 @@ const TestRequest = () => {
         attendancePercentage: Math.round(attendancePercentage),
         permitStatus,
         isEligible,
-        testRequested: false // This would come from API in real implementation
+        testRequested: existingRequest ? true : false,
+        testRequestStatus: existingRequest ? existingRequest.status : null,
+        scheduledDate: existingRequest ? existingRequest.scheduled_date : null
       };
     });
 
@@ -145,25 +203,202 @@ const TestRequest = () => {
     if (result.isConfirmed) {
       setSubmitting(true);
       try {
-        // Here you would make API calls to request tests for selected students
-        // The test results will remain "pending" until the actual test is completed
-        // and results are uploaded by ZARTSA or school administrators
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        console.log('Starting test request submission for students:', selectedStudents);
+        console.log('Current user:', user);
+        console.log('Auth token available:', !!localStorage.getItem('token'));
+        
+        // Make API calls to request tests for selected students using the /api/tests/ endpoint
+        const testRequestPromises = selectedStudents.map(async (studentId) => {
+          const student = eligibleStudents.find(s => s.id === studentId);
+          
+          if (!student) {
+            throw new Error(`Student with ID ${studentId} not found`);
+          }
+          
+          // Create comprehensive test request data with student information
+          const requestData = {
+            student: parseInt(studentId), // Keep original field name for compatibility
+            student_id: parseInt(studentId),
+            student_name: `${student.user.first_name} ${student.user.last_name}`,
+            student_email: student.user.email,
+            email: student.user.email, // Required field for API
+            school: parseInt(user.school_id || student.school || 1), // Keep original field name
+            school_id: parseInt(user.school_id || student.school || 1),
+            test_type: 'theory_practical',
+            status: 'pending',
+            requested_by: parseInt(user.id),
+            requested_by_name: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Admin',
+            permit_status: student.permitStatus || 'N/A',
+            attendance_percentage: student.attendancePercentage || 0,
+            present_days: student.presentDays || 0,
+            total_days: student.totalDays || 0,
+            request_date: new Date().toISOString(),
+            requested_at: new Date().toISOString(), // Alternative field name
+          };
 
-        // Update local state to mark as requested
-        setEligibleStudents(prev => 
-          prev.map(student => 
-            selectedStudents.includes(student.id) 
-              ? { ...student, testRequested: true }
-              : student
-          )
-        );
+          // Enhanced validation - only remove truly invalid values
+          Object.keys(requestData).forEach(key => {
+            const value = requestData[key];
+            if (value === undefined || value === null || 
+                (typeof value === 'string' && value.trim() === '') ||
+                (typeof value === 'number' && isNaN(value))) {
+              
+              // For critical fields, provide defaults instead of deleting
+              if (['student', 'student_id', 'school', 'school_id', 'status', 'email', 'student_email'].includes(key)) {
+                if (key === 'status') {
+                  requestData[key] = 'pending';
+                } else if (['student', 'student_id'].includes(key)) {
+                  requestData[key] = parseInt(studentId);
+                } else if (['school', 'school_id'].includes(key)) {
+                  requestData[key] = parseInt(user.school_id || 1);
+                } else if (['email', 'student_email'].includes(key)) {
+                  requestData[key] = student.user.email || 'noemail@example.com';
+                }
+              } else {
+                delete requestData[key];
+              }
+            }
+          });
 
+          console.log('Final test request data for student:', student.user.first_name, student.user.last_name);
+          console.log('Request Data:', JSON.stringify(requestData, null, 2));
+          console.log('User data:', JSON.stringify(user, null, 2));
+          console.log('Student data:', JSON.stringify(student, null, 2));
+
+          let response;
+          
+          try {
+            // Send request to /api/tests/ endpoint
+            response = await fetch('http://127.0.0.1:8000/api/tests/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              },
+              body: JSON.stringify(requestData),
+            });
+          } catch (fetchError) {
+            console.error('Network error:', fetchError);
+            throw new Error(`Network error: ${fetchError.message}`);
+          }
+
+          // If we get a 400 or 500 error, try with minimal data structure
+          if (response.status === 400 || response.status === 500) {
+            console.log('Retrying with minimal request data structure...');
+            const minimalData = {
+              student: parseInt(studentId),
+              student_id: parseInt(studentId),
+              student_name: `${student.user.first_name} ${student.user.last_name}`,
+              student_email: student.user.email,
+              email: student.user.email, // Add email field for API requirement
+              school: parseInt(user.school_id || 1),
+              school_id: parseInt(user.school_id || 1),
+              status: 'pending',
+              test_type: 'theory_practical',
+              requested_by: parseInt(user.id) || 1,
+            };
+            
+            console.log('Minimal data attempt:', minimalData);
+            
+            response = await fetch('http://127.0.0.1:8000/api/tests/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              },
+              body: JSON.stringify(minimalData),
+            });
+          }
+
+          // If still failing, try with absolute minimal data
+          if (!response.ok && (response.status === 400 || response.status === 500)) {
+            console.log('Trying with absolute minimal data...');
+            const absoluteMinimal = {
+              student: parseInt(studentId),
+              school: parseInt(user.school_id || 1),
+              status: 'pending',
+              email: student.user.email // Email is required by the API
+            };
+            
+            console.log('Absolute minimal data:', absoluteMinimal);
+            
+            response = await fetch('http://127.0.0.1:8000/api/tests/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              },
+              body: JSON.stringify(absoluteMinimal),
+            });
+          }
+
+          if (!response.ok) {
+            let errorMessage = `Failed to request test for student ${student.user.first_name} ${student.user.last_name}`;
+            
+            try {
+              // Clone the response before reading it to avoid "body stream already read" error
+              const responseClone = response.clone();
+              const errorData = await responseClone.json();
+              console.error('Detailed API Error Response:', errorData);
+              
+              // Enhanced error message construction
+              if (errorData.detail) {
+                errorMessage += `: ${errorData.detail}`;
+              } else if (errorData.message) {
+                errorMessage += `: ${errorData.message}`;
+              } else if (errorData.error) {
+                errorMessage += `: ${errorData.error}`;
+              }
+              
+              // Check for field-specific errors
+              Object.keys(errorData).forEach(field => {
+                if (Array.isArray(errorData[field])) {
+                  errorMessage += `. ${field}: ${errorData[field].join(', ')}`;
+                } else if (typeof errorData[field] === 'string' && field !== 'detail' && field !== 'message' && field !== 'error') {
+                  errorMessage += `. ${field}: ${errorData[field]}`;
+                }
+              });
+              
+              if (!errorData.detail && !errorData.message && !errorData.error && Object.keys(errorData).length === 0) {
+                errorMessage += ': Unknown error';
+              }
+            } catch (parseError) {
+              try {
+                const errorText = await response.text();
+                if (errorText.includes('<!DOCTYPE')) {
+                  errorMessage += ': API endpoint not found - please ensure backend is running';
+                } else if (errorText) {
+                  errorMessage += `: ${errorText}`;
+                } else {
+                  errorMessage += `: ${response.status} ${response.statusText}`;
+                }
+              } catch (textError) {
+                errorMessage += `: ${response.status} ${response.statusText}`;
+              }
+            }
+            
+            console.error('API Error for student:', student.user.first_name, student.user.last_name, 'Status:', response.status, 'Message:', errorMessage);
+            throw new Error(errorMessage);
+          }
+
+          const responseData = await response.json();
+          console.log('Test request successful for student:', student.user.first_name, student.user.last_name, 'Response:', responseData);
+          return responseData;
+        });
+
+        // Wait for all requests to complete
+        const results = await Promise.all(testRequestPromises);
+        console.log('All test requests completed successfully:', results);
+
+        // Refresh existing requests to get updated data
+        await fetchExistingRequests();
+
+        // Clear selected students
         setSelectedStudents([]);
 
         Swal.fire({
           title: 'Success!',
-          text: `Test requests submitted for ${selectedStudents.length} student(s). Test results will be updated after completion.`,
+          text: `Test requests submitted successfully for ${selectedStudents.length} student(s). Admins will review and schedule the tests.`,
           icon: 'success',
           confirmButtonText: 'OK'
         });
@@ -171,7 +406,7 @@ const TestRequest = () => {
         console.error('Error submitting test requests:', error);
         Swal.fire({
           title: 'Error!',
-          text: 'Failed to submit test requests. Please try again.',
+          text: error.message || 'Failed to submit test requests. Please try again.',
           icon: 'error',
           confirmButtonText: 'OK'
         });
@@ -474,14 +709,31 @@ const TestRequest = () => {
                               </span>
                             </td>
                             <td className="test-status-column">
-                              <div className="d-flex flex-column">
-                                <span className={`test-result-badge badge mb-1 ${student.theory_result === 'pass' ? 'bg-success' : student.theory_result === 'fail' ? 'bg-danger' : 'bg-secondary'}`}>
-                                  Theory: {student.theory_result.toUpperCase()}
-                                </span>
-                                <span className={`test-result-badge badge ${student.practical_result === 'pass' ? 'bg-success' : student.practical_result === 'fail' ? 'bg-danger' : 'bg-secondary'}`}>
-                                  Practical: {student.practical_result.toUpperCase()}
-                                </span>
-                              </div>
+                              {student.testRequested ? (
+                                <div className="d-flex flex-column">
+                                  <span className={`badge mb-1 ${
+                                    student.testRequestStatus === 'pending' ? 'bg-warning' :
+                                    student.testRequestStatus === 'approved' ? 'bg-success' :
+                                    student.testRequestStatus === 'rejected' ? 'bg-danger' : 'bg-secondary'
+                                  }`}>
+                                    Request: {student.testRequestStatus?.toUpperCase()}
+                                  </span>
+                                  {student.scheduledDate && (
+                                    <small className="text-success">
+                                      {new Date(student.scheduledDate).toLocaleDateString()}
+                                    </small>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="d-flex flex-column">
+                                  <span className={`test-result-badge badge mb-1 ${student.theory_result === 'pass' ? 'bg-success' : student.theory_result === 'fail' ? 'bg-danger' : 'bg-secondary'}`}>
+                                    Theory: {student.theory_result?.toUpperCase() || 'PENDING'}
+                                  </span>
+                                  <span className={`test-result-badge badge ${student.practical_result === 'pass' ? 'bg-success' : student.practical_result === 'fail' ? 'bg-danger' : 'bg-secondary'}`}>
+                                    Practical: {student.practical_result?.toUpperCase() || 'PENDING'}
+                                  </span>
+                                </div>
+                              )}
                             </td>
                           </tr>
                         ))}

@@ -16,6 +16,7 @@ import LearningProgress from './pages/LearningProgress';
 import AttendanceManagement from './pages/AttendanceManagement';
 import Login from './pages/Login';
 import ManageLectures from './pages/ManageLectures';
+import MyTestSchedule from './pages/MyTestSchedule';
 
 const AppRoutes = () => (
   <Routes>
@@ -37,6 +38,7 @@ const AppRoutes = () => (
             <Route path="/manage-students" element={<ManageStudents />} />
             <Route path="/learner-permit" element={<LearnerPermit />} />
             <Route path="/test-request" element={<TestRequest />} />
+            <Route path="/my-test-schedule" element={<MyTestSchedule />} />
             <Route path="/download-permit" element={<DownloadPermit />} />
             <Route path="/learning-progress" element={<LearningProgress />} />
             <Route path="/attendance-management" element={<AttendanceManagement />} />
