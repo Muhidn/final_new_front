@@ -14,6 +14,7 @@ const ScheduleTest = () => {
   const [processingId, setProcessingId] = useState(null);
   const [attendanceData, setAttendanceData] = useState({});
   const [schoolsData, setSchoolsData] = useState({});
+  const [studentsData, setStudentsData] = useState({});
 
   useEffect(() => {
     fetchTestRequests();
@@ -49,6 +50,50 @@ const ScheduleTest = () => {
       }
     } catch (error) {
       console.error('Error fetching schools data:', error);
+    }
+    
+    return {};
+  };
+
+  // Function to fetch students data including permit status
+  const fetchStudentsData = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/students/', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Students data:', data);
+        console.log('Students data type:', typeof data);
+        console.log('Is students array:', Array.isArray(data));
+        
+        // Debug: Log the structure of the first student to see available fields
+        if (Array.isArray(data) && data.length > 0) {
+          console.log('First student structure:', JSON.stringify(data[0], null, 2));
+        } else if (data && typeof data === 'object') {
+          console.log('Single student structure:', JSON.stringify(data, null, 2));
+        }
+        
+        // Handle both array and single object responses
+        const studentsArray = Array.isArray(data) ? data : [data];
+        
+        // Create a map of student ID to student object
+        const studentsMap = {};
+        studentsArray.forEach(student => {
+          if (student && student.id) {
+            studentsMap[student.id] = student;
+          }
+        });
+        
+        setStudentsData(studentsMap);
+        return studentsMap;
+      }
+    } catch (error) {
+      console.error('Error fetching students data:', error);
     }
     
     return {};
@@ -106,7 +151,7 @@ const ScheduleTest = () => {
     const attendanceMap = {};
     
     for (const request of requests) {
-      const studentId = request.student || request.student_details?.id || request.student_id;
+      const studentId = getStudentIdFromRequest(request);
       if (studentId && !attendanceMap[studentId]) {
         attendanceMap[studentId] = await fetchStudentAttendance(studentId);
       }
@@ -116,9 +161,18 @@ const ScheduleTest = () => {
     return attendanceMap;
   };
 
+  // Function to get student ID from request in different formats
+  const getStudentIdFromRequest = (request) => {
+    // Try different possible locations for student ID
+    return request.student?.id || 
+           request.student_details?.id || 
+           request.student_id ||
+           request.student;
+  };
+
   // Helper function to get real attendance data for a student
   const getStudentAttendanceInfo = (request) => {
-    const studentId = request.student || request.student_details?.id || request.student_id;
+    const studentId = getStudentIdFromRequest(request);
     const realAttendance = attendanceData[studentId];
     
     if (realAttendance) {
@@ -137,6 +191,100 @@ const ScheduleTest = () => {
       totalDays: request.total_days || 0,
       eligibility: request.eligibility || 'not_eligible'
     };
+  };
+
+  // Helper function to get student information including permit status from API
+  const getStudentPermitStatus = (request) => {
+    const studentId = getStudentIdFromRequest(request);
+    
+    console.log('=== PERMIT STATUS DEBUG ===');
+    console.log('Getting permit status for request:', request.id);
+    console.log('Student ID found:', studentId);
+    console.log('Student ID type:', typeof studentId);
+    console.log('Available studentsData keys:', Object.keys(studentsData));
+    console.log('StudentsData loaded count:', Object.keys(studentsData).length);
+    
+    // First priority: Try to get student data from our fetched students database
+    if (studentId && studentsData[studentId]) {
+      const studentData = studentsData[studentId];
+      console.log('Found student data for ID', studentId, ':', studentData);
+      console.log('Student permit field:', studentData.permit);
+      console.log('Student theory_result:', studentData.theory_result);
+      console.log('Student practical_result:', studentData.practical_result);
+      
+      return determinePermitStatus(studentData);
+    }
+    
+    console.log('Student ID', studentId, 'not found in studentsData');
+    console.log('Attempting to use student data from request itself...');
+    
+    // Second priority: Try to get student data from the request itself
+    const student = request.student || request.student_details || request.student_data;
+    if (student) {
+      console.log('Using student data from request:', student);
+      console.log('Request student permit field:', student.permit);
+      return determinePermitStatus(student);
+    }
+    
+    console.log('No student data available anywhere, returning Not Available');
+    return 'Not Available';
+  };
+
+  // Helper function to determine permit status based on student data
+  const determinePermitStatus = (studentData) => {
+    console.log('Determining permit status for student data:', studentData);
+    
+    if (!studentData) {
+      console.log('No student data provided');
+      return 'Not Available';
+    }
+    
+    // Check if permit file exists (URL to permit document)
+    const permitFile = studentData.permit;
+    console.log('Permit file check:', permitFile);
+    console.log('Permit exists:', !!permitFile);
+    console.log('Permit is not null:', permitFile !== null);
+    console.log('Permit is not empty string:', permitFile !== '');
+    
+    if (!permitFile || permitFile === null || permitFile === '') {
+      console.log('No permit file found - returning Not Available');
+      return 'Not Available';
+    }
+    
+    console.log('✓ Permit file exists:', permitFile);
+    
+    // If permit file exists, the status is Active by default
+    // Check test results only to refine status for failed tests
+    const theoryResult = studentData.theory_result;
+    const practicalResult = studentData.practical_result;
+    
+    console.log('Theory result:', theoryResult);
+    console.log('Practical result:', practicalResult);
+    
+    // One or both tests failed - permit is inactive
+    if (theoryResult === 'fail' || practicalResult === 'fail') {
+      console.log('Tests failed - permit is Inactive');
+      return 'Inactive - Test Failed';
+    }
+    
+    // Additional date-based expiry check (optional)
+    if (studentData.updated_at) {
+      const permitUploadDate = new Date(studentData.updated_at);
+      const currentDate = new Date();
+      const daysSinceUpload = Math.floor((currentDate - permitUploadDate) / (1000 * 60 * 60 * 24));
+      
+      // Consider permit expired after 270 days (9 months)
+      const totalValidityDays = 270;
+      
+      if (daysSinceUpload > totalValidityDays) {
+        console.log('Permit is expired based on date');
+        return 'Expired';
+      }
+    }
+    
+    // Default: If permit file exists and no tests failed, it's Active
+    console.log('Permit file exists - returning Active');
+    return 'Active';
   };
 
   // Helper function to get school information
@@ -191,13 +339,23 @@ const ScheduleTest = () => {
             console.log('Data type:', typeof data);
             console.log('Is array:', Array.isArray(data));
             
+            // Debug: Log the structure of the first request to see available fields
+            if (Array.isArray(data) && data.length > 0) {
+              console.log('First request structure:', JSON.stringify(data[0], null, 2));
+            } else if (data && typeof data === 'object') {
+              console.log('Single request structure:', JSON.stringify(data, null, 2));
+            }
+            
             // Handle both array and single object responses
             if (Array.isArray(data)) {
-              // Add default status field if missing
-              const processedData = data.map(request => ({
-                ...request,
-                status: request.status || 'pending' // Default to pending if no status
-              }));
+              // Preserve actual status from database, only default if truly missing
+              const processedData = data.map(request => {
+                console.log('Processing request:', request.id, 'Status from API:', request.status);
+                return {
+                  ...request,
+                  status: request.status || 'pending' // Only default if status is null/undefined
+                };
+              });
               setTestRequests(processedData);
               
               // Fetch attendance data for all students
@@ -205,11 +363,14 @@ const ScheduleTest = () => {
               
               // Fetch schools data
               await fetchSchoolsData();
+              
+              // Fetch students data to get permit status
+              await fetchStudentsData();
             } else if (data && typeof data === 'object') {
-              // If it's a single object, wrap it in an array and add default status
+              // If it's a single object, wrap it in an array and preserve actual status
               const processedData = {
                 ...data,
-                status: data.status || 'pending'
+                status: data.status || 'pending' // Only default if status is null/undefined
               };
               const requestArray = [processedData];
               setTestRequests(requestArray);
@@ -219,6 +380,9 @@ const ScheduleTest = () => {
               
               // Fetch schools data
               await fetchSchoolsData();
+              
+              // Fetch students data to get permit status
+              await fetchStudentsData();
             } else {
               console.warn('Unexpected data format:', data);
               setTestRequests([]);
@@ -332,13 +496,22 @@ const ScheduleTest = () => {
             if (contentType && contentType.includes('application/json')) {
               const updatedRequest = await response.json();
               console.log('Real API approved request:', updatedRequest);
+              console.log('Original request ID:', requestId);
+              console.log('Updated request status:', updatedRequest.status);
+              console.log('Before state update - current testRequests:', testRequests);
               
               // Update local state
-              setTestRequests(prev => 
-                prev.map(request => 
-                  request.id === requestId ? updatedRequest : request
-                )
-              );
+              setTestRequests(prev => {
+                const newRequests = prev.map(request => {
+                  if (request.id === requestId) {
+                    console.log('Updating request:', request.id, 'from status:', request.status, 'to status:', updatedRequest.status);
+                    return { ...request, ...updatedRequest };
+                  }
+                  return request;
+                });
+                console.log('After state update - new testRequests:', newRequests);
+                return newRequests;
+              });
 
               setSelectedDate('');
 
@@ -373,13 +546,23 @@ const ScheduleTest = () => {
         }
 
         const updatedRequest = await mockResponse.json();
+        console.log('Mock API approved request:', updatedRequest);
+        console.log('Mock - Original request ID:', requestId);
+        console.log('Mock - Updated request status:', updatedRequest.status);
+        console.log('Mock - Before state update - current testRequests:', testRequests);
         
         // Update local state
-        setTestRequests(prev => 
-          prev.map(request => 
-            request.id === requestId ? updatedRequest : request
-          )
-        );
+        setTestRequests(prev => {
+          const newRequests = prev.map(request => {
+            if (request.id === requestId) {
+              console.log('Mock - Updating request:', request.id, 'from status:', request.status, 'to status:', updatedRequest.status);
+              return { ...request, ...updatedRequest };
+            }
+            return request;
+          });
+          console.log('Mock - After state update - new testRequests:', newRequests);
+          return newRequests;
+        });
 
         setSelectedDate('');
 
@@ -595,19 +778,20 @@ const ScheduleTest = () => {
   const getFilteredRequests = () => {
     let filtered = testRequests;
 
-    console.log('Filtering requests:', filtered);
+    console.log('=== FILTERING DEBUG ===');
+    console.log('All test requests:', filtered.map(r => ({ id: r.id, status: r.status })));
     console.log('Current filter:', filter);
 
     // Apply status filter
     if (filter !== 'all') {
       filtered = filtered.filter(request => {
         const requestStatus = request.status || 'pending';
-        console.log('Request status:', requestStatus, 'Filter:', filter);
+        console.log('Request', request.id, 'status:', requestStatus, 'Filter:', filter, 'Match:', requestStatus === filter);
         return requestStatus === filter;
       });
     }
 
-    console.log('After status filter:', filtered);
+    console.log('After status filter:', filtered.map(r => ({ id: r.id, status: r.status })));
 
     // Apply search filter
     if (searchTerm) {
@@ -623,7 +807,7 @@ const ScheduleTest = () => {
                      request.student_details?.user?.email || 
                      request.student_email || 
                      request.email || '';
-        const permitStatus = request.permit_status || '';
+        const permitStatus = getStudentPermitStatus(request);
         const eligibility = request.eligibility || '';
         const requestStatus = request.status || 'pending';
         
@@ -740,7 +924,7 @@ const ScheduleTest = () => {
 
         {/* Filters and Controls */}
         <div className="row mb-4">
-          <div className="col-md-8">
+          <div className="col-12">
             <div className="card filter-card">
               <div className="card-body">
                 <div className="row">
@@ -798,20 +982,6 @@ const ScheduleTest = () => {
               </div>
             </div>
           </div>
-          <div className="col-md-4">
-            <div className="card filter-card">
-              <div className="card-body text-center">
-                <h6 className="text-muted mb-3">Quick Actions</h6>
-                <button 
-                  className="btn btn-primary me-2"
-                  onClick={fetchTestRequests}
-                >
-                  <i className="bi bi-arrow-clockwise me-2"></i>
-                  Refresh
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Test Requests Table */}
@@ -860,106 +1030,190 @@ const ScheduleTest = () => {
                   </div>
                 ) : (
                   <div className="table-responsive">
-                    <table className="table table-hover mb-0">
+                    <table className="table table-hover mb-0" style={{fontSize: '13px'}}>
                       <thead className="table-light">
                         <tr>
-                          <th>Name</th>
-                          <th>Email</th>
-                          <th>School</th>
-                          <th>Attendance</th>
-                          <th>Present Days</th>
-                          <th>Permit Status</th>
-                          <th>Eligibility</th>
-                          <th>Request Status</th>
-                          <th>Actions</th>
+                          <th style={{width: '250px'}}>Student Information</th>
+                          <th style={{width: '120px'}}>School</th>
+                          <th style={{width: '100px'}}>Attendance</th>
+                          <th style={{width: '130px'}}>Permit Status</th>
+                          <th style={{width: '140px'}}>Test Results</th>
+                          <th style={{width: '100px'}}>Eligibility</th>
+                          <th style={{width: '120px'}}>Request Status</th>
+                          <th style={{width: '160px'}}>Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {filteredRequests.map((request) => {
                           const attendanceInfo = getStudentAttendanceInfo(request);
                           const schoolName = getSchoolInfo(request);
+                          const permitStatus = getStudentPermitStatus(request);
+                          const studentId = getStudentIdFromRequest(request);
+                          const studentData = studentsData[studentId] || {};
                           
                           return (
                           <tr key={request.id}>
-                            <td>
-                              <div className="student-name">
-                                {(() => {
-                                  // Handle all data formats
-                                  if (request.student?.user) {
-                                    return `${request.student.user.first_name} ${request.student.user.last_name}`;
-                                  } else if (request.student_details?.user) {
-                                    return `${request.student_details.user.first_name} ${request.student_details.user.last_name}`;
-                                  } else {
-                                    return request.student_name || 'N/A';
-                                  }
-                                })()}
+                            <td style={{width: '250px'}}>
+                              <div className="student-info d-flex flex-column p-2">
+                                <div className="student-name fw-bold mb-2 text-primary" style={{fontSize: '14px'}}>
+                                  <i className="bi bi-person-fill me-2"></i>
+                                  {(() => {
+                                    // Handle all data formats
+                                    if (request.student?.user) {
+                                      return `${request.student.user.first_name} ${request.student.user.last_name}`;
+                                    } else if (request.student_details?.user) {
+                                      return `${request.student_details.user.first_name} ${request.student_details.user.last_name}`;
+                                    } else {
+                                      return request.student_name || 'N/A';
+                                    }
+                                  })()}
+                                </div>
+                                <div className="student-email text-muted mb-1" style={{fontSize: '12px'}}>
+                                  <i className="bi bi-envelope me-2 text-info"></i>
+                                  {request.student?.user?.email || request.student_details?.user?.email || request.student_email || request.email || 'N/A'}
+                                </div>
+                                <div className="student-id" style={{fontSize: '11px'}}>
+                                  <span className="badge bg-light text-dark">
+                                    <i className="bi bi-person-badge me-1"></i>
+                                    ID: {studentId || 'N/A'}
+                                  </span>
+                                </div>
                               </div>
                             </td>
-                            <td>
-                              <div className="student-email">
-                                {request.student?.user?.email || request.student_details?.user?.email || request.student_email || request.email || 'N/A'}
-                              </div>
-                            </td>
-                            <td>
-                              <div className="school-name">
-                                <span className="badge bg-info">{schoolName}</span>
-                              </div>
-                            </td>
-                            <td>
-                              <div className="attendance-value">
-                                <span className={`badge ${
-                                  attendanceInfo.attendancePercentage >= 75 ? 'bg-success' :
-                                  attendanceInfo.attendancePercentage >= 50 ? 'bg-warning' : 'bg-danger'
-                                }`}>
-                                  {attendanceInfo.attendancePercentage}%
+                            <td style={{width: '120px'}}>
+                              <div className="school-info text-center p-2">
+                                <span className="badge bg-gradient bg-info text-white fw-bold text-wrap" style={{fontSize: '11px', maxWidth: '100px', padding: '6px 8px'}}>
+                                  <i className="bi bi-building me-1"></i>
+                                  {schoolName}
                                 </span>
                               </div>
                             </td>
-                            <td>
-                              <div className="present-days">
-                                {attendanceInfo.presentDays}/{attendanceInfo.totalDays}
+                            <td style={{width: '100px'}}>
+                              <div className="attendance-info text-center p-2">
+                                <div className="mb-2">
+                                  <span className={`badge fw-bold ${
+                                    attendanceInfo.attendancePercentage >= 75 ? 'bg-success' :
+                                    attendanceInfo.attendancePercentage >= 50 ? 'bg-warning text-dark' : 'bg-danger'
+                                  }`} style={{fontSize: '13px', minWidth: '55px', padding: '6px 8px'}}>
+                                    {attendanceInfo.attendancePercentage}%
+                                  </span>
+                                </div>
+                                <div className="text-muted small">
+                                  <i className="bi bi-calendar-check me-1 text-primary"></i>
+                                  <strong>{attendanceInfo.presentDays}</strong>/<strong>{attendanceInfo.totalDays}</strong>
+                                  <div style={{fontSize: '10px'}} className="text-secondary">days</div>
+                                </div>
                               </div>
                             </td>
-                            <td>
-                              <span className={`badge ${
-                                request.permit_status === 'Active' ? 'bg-success' :
-                                request.permit_status === 'pending' ? 'bg-warning' :
-                                request.permit_status === 'Expired' ? 'bg-danger' : 'bg-secondary'
-                              }`}>
-                                {request.permit_status || 'N/A'}
-                              </span>
+                            <td style={{width: '130px'}}>
+                              <div className="permit-status-info text-center p-2">
+                                <div className="mb-2">
+                                  <span className={`badge fw-bold text-wrap ${
+                                    permitStatus === 'Active' ? 'bg-success' :
+                                    permitStatus === 'Processing' ? 'bg-warning text-dark' :
+                                    permitStatus === 'pending' ? 'bg-warning text-dark' :
+                                    permitStatus === 'Expired' ? 'bg-danger' : 
+                                    permitStatus === 'Inactive - Test Failed' ? 'bg-danger' :
+                                    permitStatus === 'Inactive - Renewal Required' ? 'bg-warning text-dark' : 
+                                    permitStatus === 'Not Available' ? 'bg-secondary' : 'bg-secondary'
+                                  }`} style={{fontSize: '11px', maxWidth: '110px', padding: '6px 8px'}}>
+                                    <i className={`bi ${
+                                      permitStatus === 'Active' ? 'bi-check-circle-fill' :
+                                      permitStatus === 'Processing' ? 'bi-clock-fill' :
+                                      permitStatus === 'Not Available' ? 'bi-x-circle-fill' : 'bi-exclamation-triangle-fill'
+                                    } me-1`}></i>
+                                    {permitStatus}
+                                  </span>
+                                </div>
+                                <div className="permit-file-status">
+                                  {studentData.permit ? (
+                                    <small className="text-success fw-bold">
+                                      <i className="bi bi-file-earmark-pdf-fill"></i> Available
+                                    </small>
+                                  ) : (
+                                    <small className="text-warning fw-bold">
+                                      <i className="bi bi-exclamation-triangle-fill"></i> Missing
+                                    </small>
+                                  )}
+                                </div>
+                              </div>
                             </td>
-                            <td>
-                              <span className={`badge ${
-                                attendanceInfo.eligibility === 'eligible' ? 'bg-success' :
-                                attendanceInfo.eligibility === 'not_eligible' ? 'bg-danger' : 'bg-secondary'
-                              }`}>
-                                {attendanceInfo.eligibility === 'eligible' ? 'Eligible' : 
-                                 attendanceInfo.eligibility === 'not_eligible' ? 'Not Eligible' : 'N/A'}
-                              </span>
+                            <td style={{width: '140px'}}>
+                              <div className="test-results p-2">
+                                <div className="d-flex flex-column gap-2">
+                                  <div className="d-flex align-items-center justify-content-between bg-light p-2 rounded">
+                                    <small className="fw-bold text-primary" style={{fontSize: '11px'}}>
+                                      <i className="bi bi-book me-1"></i>Theory:
+                                    </small>
+                                    <span className={`badge fw-bold ${
+                                      studentData.theory_result === 'pass' ? 'bg-success' :
+                                      studentData.theory_result === 'fail' ? 'bg-danger' :
+                                      studentData.theory_result === 'pending' ? 'bg-warning text-dark' : 'bg-secondary'
+                                    }`} style={{fontSize: '10px', minWidth: '50px', padding: '4px 6px'}}>
+                                      {studentData.theory_result || 'N/A'}
+                                    </span>
+                                  </div>
+                                  <div className="d-flex align-items-center justify-content-between bg-light p-2 rounded">
+                                    <small className="fw-bold text-primary" style={{fontSize: '11px'}}>
+                                      <i className="bi bi-car-front me-1"></i>Practical:
+                                    </small>
+                                    <span className={`badge fw-bold ${
+                                      studentData.practical_result === 'pass' ? 'bg-success' :
+                                      studentData.practical_result === 'fail' ? 'bg-danger' :
+                                      studentData.practical_result === 'pending' ? 'bg-warning text-dark' : 'bg-secondary'
+                                    }`} style={{fontSize: '10px', minWidth: '50px', padding: '4px 6px'}}>
+                                      {studentData.practical_result || 'N/A'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
                             </td>
-                            <td>
-                              <span className={`badge ${
-                                (request.status || 'pending') === 'pending' ? 'bg-warning' :
-                                (request.status || 'pending') === 'approved' ? 'bg-success' :
-                                (request.status || 'pending') === 'rejected' ? 'bg-danger' :
-                                (request.status || 'pending') === 'completed' ? 'bg-info' : 'bg-secondary'
-                              }`}>
-                                {(request.status || 'pending') === 'pending' ? 'Pending' :
-                                 (request.status || 'pending') === 'approved' ? 'Approved' :
-                                 (request.status || 'pending') === 'rejected' ? 'Rejected' :
-                                 (request.status || 'pending') === 'completed' ? 'Completed' : 'Unknown'}
-                              </span>
+                            <td style={{width: '100px'}}>
+                              <div className="eligibility-info text-center p-2">
+                                <span className={`badge fw-bold ${
+                                  attendanceInfo.eligibility === 'eligible' ? 'bg-success' :
+                                  attendanceInfo.eligibility === 'not_eligible' ? 'bg-danger' : 'bg-secondary'
+                                }`} style={{fontSize: '11px', padding: '8px 10px'}}>
+                                  <i className={`bi ${
+                                    attendanceInfo.eligibility === 'eligible' ? 'bi-check-circle-fill' :
+                                    attendanceInfo.eligibility === 'not_eligible' ? 'bi-x-circle-fill' : 'bi-question-circle-fill'
+                                  } me-1`}></i>
+                                  {attendanceInfo.eligibility === 'eligible' ? 'Eligible' : 
+                                   attendanceInfo.eligibility === 'not_eligible' ? 'Not Eligible' : 'N/A'}
+                                </span>
+                              </div>
                             </td>
-                            <td>
-                              <div className="action-buttons">
+                            <td style={{width: '120px'}}>
+                              <div className="request-status-info text-center">
+                                {(() => {
+                                  const currentStatus = request.status || 'pending';
+                                  console.log(`Rendering status for request ${request.id}: ${currentStatus}`);
+                                  return (
+                                    <span className={`badge ${
+                                      currentStatus === 'pending' ? 'bg-warning' :
+                                      currentStatus === 'approved' ? 'bg-success' :
+                                      currentStatus === 'rejected' ? 'bg-danger' :
+                                      currentStatus === 'completed' ? 'bg-info' : 'bg-secondary'
+                                    }`} style={{fontSize: '11px'}}>
+                                      {currentStatus === 'pending' ? 'Pending' :
+                                       currentStatus === 'approved' ? 'Approved' :
+                                       currentStatus === 'rejected' ? 'Rejected' :
+                                       currentStatus === 'completed' ? 'Completed' : 'Unknown'}
+                                    </span>
+                                  );
+                                })()}
+                              </div>
+                            </td>
+                            <td style={{width: '160px'}}>
+                              <div className="action-buttons d-flex flex-column gap-1">
                                 {(request.status || 'pending') === 'pending' && (
                                   <>
                                     <button
-                                      className={`btn ${!selectedDate ? 'btn-outline-success' : 'btn-success'} btn-approve me-1`}
+                                      className={`btn btn-sm ${!selectedDate ? 'btn-outline-success' : 'btn-success'} w-100`}
                                       onClick={() => handleApproveRequest(request.id)}
                                       disabled={processingId === request.id || !selectedDate}
                                       title={!selectedDate ? "Please select a test date first" : `Approve and schedule for ${new Date(selectedDate).toLocaleDateString()}`}
+                                      style={{fontSize: '11px'}}
                                     >
                                       {processingId === request.id ? (
                                         <span className="spinner-border spinner-border-sm" />
@@ -971,10 +1225,11 @@ const ScheduleTest = () => {
                                       )}
                                     </button>
                                     <button
-                                      className="btn btn-outline-danger btn-reject"
+                                      className="btn btn-sm btn-outline-danger w-100"
                                       onClick={() => handleRejectRequest(request.id)}
                                       disabled={processingId === request.id}
                                       title="Reject this test request"
+                                      style={{fontSize: '11px'}}
                                     >
                                       {processingId === request.id ? (
                                         <span className="spinner-border spinner-border-sm" />
@@ -988,10 +1243,11 @@ const ScheduleTest = () => {
                                   </>
                                 )}
                                 <button
-                                  className="btn btn-view-details"
+                                  className="btn btn-sm btn-outline-info w-100"
                                   onClick={() => {
                                     const attendanceInfo = getStudentAttendanceInfo(request);
                                     const schoolName = getSchoolInfo(request);
+                                    const permitStatus = getStudentPermitStatus(request);
                                     Swal.fire({
                                       title: 'Test Request Details',
                                       html: `
@@ -1026,10 +1282,13 @@ const ScheduleTest = () => {
                                             <div class="col-6">
                                               <p><strong>Permit Status:</strong> 
                                                 <span class="badge ${
-                                                  request.permit_status === 'Active' ? 'bg-success' :
-                                                  request.permit_status === 'Inactive - Renewal Required' ? 'bg-warning' :
-                                                  request.permit_status === 'Expired' ? 'bg-danger' : 'bg-secondary'
-                                                } ms-2">${request.permit_status || 'N/A'}</span>
+                                                  permitStatus === 'Active' ? 'bg-success' :
+                                                  permitStatus === 'Processing' ? 'bg-warning' :
+                                                  permitStatus === 'Inactive - Test Failed' ? 'bg-danger' :
+                                                  permitStatus === 'Inactive - Renewal Required' ? 'bg-warning' :
+                                                  permitStatus === 'Expired' ? 'bg-danger' : 
+                                                  permitStatus === 'Not Available' ? 'bg-secondary' : 'bg-secondary'
+                                                } ms-2">${permitStatus}</span>
                                               </p>
                                               <p><strong>Attendance:</strong> 
                                                 <span class="badge ${
@@ -1075,8 +1334,11 @@ const ScheduleTest = () => {
                                       width: '600px'
                                     });
                                   }}
+                                  style={{fontSize: '11px'}}
+                                  title="View detailed information"
                                 >
-                                  <i className="bi bi-eye"></i>
+                                  <i className="bi bi-eye me-1"></i>
+                                  Details
                                 </button>
                               </div>
                             </td>

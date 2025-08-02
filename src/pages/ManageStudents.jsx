@@ -36,6 +36,90 @@ const ManageStudents = () => {
   });
   const [addLoading, setAddLoading] = useState(false);
 
+  // API Configuration
+  const API_BASE_URL = 'http://127.0.0.1:8000/api';
+  
+  // API Service Functions
+  const apiService = {
+    // Create user account
+    createUser: async (formData) => {
+      console.log('🔗 API: Creating user account...');
+      const response = await fetch(`${API_BASE_URL}/users/`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      
+      return response.json();
+    },
+    
+    // Create student record
+    createStudent: async (formData) => {
+      console.log('🔗 API: Creating student record...');
+      const response = await fetch(`${API_BASE_URL}/students/`, {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      
+      return response.json();
+    },
+    
+    // Update user account
+    updateUser: async (userId, userData) => {
+      console.log('🔗 API: Updating user account...');
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      
+      return response.json();
+    },
+    
+    // Update student record
+    updateStudent: async (studentId, studentData) => {
+      console.log('🔗 API: Updating student record...');
+      const response = await fetch(`${API_BASE_URL}/students/${studentId}/`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(studentData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      
+      return response.json();
+    },
+    
+    // Delete user (cleanup function)
+    deleteUser: async (userId) => {
+      console.log('🗑️ API: Cleaning up user account...');
+      const response = await fetch(`${API_BASE_URL}/users/${userId}/`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        console.warn('Failed to cleanup user account:', userId);
+      }
+    }
+  };
+
   // Fetch school admin data to determine user's school
   const fetchSchoolAdminData = async () => {
     if (!user || user.role !== 'school_admin') {
@@ -188,40 +272,75 @@ const ManageStudents = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     setEditLoading(true);
+    
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/students/${editStudent.id}/`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user: {
-            username: editForm.username,
-            email: editForm.email,
-            first_name: editForm.first_name,
-            last_name: editForm.last_name,
-            is_active: editForm.is_active,
-            role: editForm.role,
-            address: editForm.address,
-            phone_number: editForm.phone_number,
-          },
-          school: editForm.school,
-          theory_result: editForm.theory_result,
-          practical_result: editForm.practical_result,
-        }),
-      });
-      if (res.ok) {
-        setEditStudent(null);
-        fetchStudents();
-      } else {
-        // Try to show a more descriptive error if available
-        let errorMsg = "Failed to update student.";
-        try {
-          const data = await res.json();
-          if (data && data.detail) errorMsg = data.detail;
-        } catch {}
-        alert(errorMsg);
+      console.log('🔄 Starting student update process...');
+      
+      // 1. Update user data via User API
+      console.log('👤 Step 1: Updating user account...');
+      const userUpdateData = {
+        username: editForm.username.trim(),
+        email: editForm.email.trim(),
+        first_name: editForm.first_name.trim(),
+        last_name: editForm.last_name.trim(),
+        is_active: editForm.is_active,
+        role: editForm.role,
+        address: editForm.address.trim(),
+        phone_number: editForm.phone_number.trim(),
+      };
+      
+      // Use API service to update user
+      await apiService.updateUser(editStudent.user.id, userUpdateData);
+      console.log('✅ User updated successfully');
+      
+      // 2. Update student data via Student API
+      console.log('🎓 Step 2: Updating student record...');
+      const studentUpdateData = {
+        school: editForm.school,
+        theory_result: editForm.theory_result,
+        practical_result: editForm.practical_result,
+      };
+      
+      // Use API service to update student
+      await apiService.updateStudent(editStudent.id, studentUpdateData);
+      console.log('✅ Student updated successfully');
+      
+      // Success: Close modal and refresh data
+      setEditStudent(null);
+      await fetchStudents();
+      alert(`Student "${editForm.first_name} ${editForm.last_name}" updated successfully!`);
+      
+    } catch (error) {
+      console.error('❌ Error during student update:', error);
+      
+      let errorMessage = 'Failed to update student.';
+      
+      try {
+        const errorData = JSON.parse(error.message);
+        
+        if (errorData && errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData && typeof errorData === 'object') {
+          // Handle field-specific errors
+          const errors = [];
+          Object.keys(errorData).forEach(field => {
+            if (Array.isArray(errorData[field])) {
+              errors.push(`${field}: ${errorData[field].join(', ')}`);
+            } else {
+              errors.push(`${field}: ${errorData[field]}`);
+            }
+          });
+          if (errors.length > 0) {
+            errorMessage = errors.join('\n');
+          }
+        }
+      } catch (parseError) {
+        console.error('Error parsing API response:', parseError);
+        errorMessage = 'An unexpected error occurred. Please try again.';
       }
-    } catch {
-      alert("Network error. Please try again.");
+      
+      alert(`Student Update Failed:\n${errorMessage}`);
+      
     } finally {
       setEditLoading(false);
     }
@@ -273,74 +392,207 @@ const ManageStudents = () => {
     const { name, value, type } = e.target;
     setAddForm((prev) => ({ ...prev, [name]: value }));
   };
+
+  const validateAddForm = () => {
+    const errors = [];
+    
+    // Required field validation
+    if (!addForm.username.trim()) errors.push('Username is required');
+    if (!addForm.email.trim()) errors.push('Email is required');
+    if (!addForm.password.trim()) errors.push('Password is required');
+    if (!addForm.first_name.trim()) errors.push('First name is required');
+    if (!addForm.last_name.trim()) errors.push('Last name is required');
+    if (!addForm.school) errors.push('School selection is required');
+    
+    // Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (addForm.email && !emailRegex.test(addForm.email)) {
+      errors.push('Please enter a valid email address');
+    }
+    
+    // Username validation (no spaces, minimum length)
+    if (addForm.username && addForm.username.includes(' ')) {
+      errors.push('Username cannot contain spaces');
+    }
+    if (addForm.username && addForm.username.length < 3) {
+      errors.push('Username must be at least 3 characters long');
+    }
+    
+    // Password strength validation
+    if (addForm.password && addForm.password.length < 6) {
+      errors.push('Password must be at least 6 characters long');
+    }
+    
+    // Phone number validation (if provided)
+    if (addForm.phone_number && addForm.phone_number.trim()) {
+      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
+      if (!phoneRegex.test(addForm.phone_number.replace(/[\s\-\(\)]/g, ''))) {
+        errors.push('Please enter a valid phone number');
+      }
+    }
+    
+    return errors;
+  };
   const handleAddFileChange = (e) => {
     const { name, files } = e.target;
-    setAddFiles((prev) => ({ ...prev, [name]: files[0] || null }));
+    const file = files[0] || null;
+    
+    // Validate file if provided
+    if (file) {
+      const maxSize = 5 * 1024 * 1024; // 5MB
+      
+      if (file.size > maxSize) {
+        alert(`File "${file.name}" is too large. Maximum size is 5MB.`);
+        e.target.value = ''; // Clear the input
+        return;
+      }
+      
+      // Validate file types for profile picture
+      if (name === 'profile_picture') {
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+        if (!allowedTypes.includes(file.type)) {
+          alert('Profile picture must be an image file (JPEG, PNG, or GIF).');
+          e.target.value = ''; // Clear the input
+          return;
+        }
+      }
+      
+      console.log(`📁 File selected for ${name}:`, file.name, `(${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+    }
+    
+    setAddFiles((prev) => ({ ...prev, [name]: file }));
   };
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    const validationErrors = validateAddForm();
+    if (validationErrors.length > 0) {
+      alert('Please fix the following errors:\n\n' + validationErrors.join('\n'));
+      return;
+    }
+    
     setAddLoading(true);
+    
+    let createdUserId = null;
+    
     try {
-      // 1. Submit user data to User API
+      console.log('🚀 Starting student creation process...');
+      
+      // 1. Prepare and submit user data to User API
+      console.log('📝 Step 1: Creating user account...');
       const userFormData = new FormData();
-      userFormData.append('username', addForm.username);
-      userFormData.append('email', addForm.email);
+      
+      // Add user fields
+      userFormData.append('username', addForm.username.trim());
+      userFormData.append('email', addForm.email.trim());
       userFormData.append('password', addForm.password);
-      userFormData.append('first_name', addForm.first_name);
-      userFormData.append('last_name', addForm.last_name);
+      userFormData.append('first_name', addForm.first_name.trim());
+      userFormData.append('last_name', addForm.last_name.trim());
       userFormData.append('is_active', addForm.is_active);
       userFormData.append('role', 'student');
-      userFormData.append('address', addForm.address);
-      userFormData.append('phone_number', addForm.phone_number);
+      userFormData.append('address', addForm.address.trim());
+      userFormData.append('phone_number', addForm.phone_number.trim());
+      
+      // Add profile picture if provided
       if (addFiles.profile_picture) {
         userFormData.append('profile_picture', addFiles.profile_picture);
+        console.log('📷 Profile picture added to user data');
       }
-      const userRes = await fetch('http://127.0.0.1:8000/api/users/', {
-        method: 'POST',
-        body: userFormData,
-      });
-      if (!userRes.ok) {
-        let errorMsg = 'Failed to create user.';
-        try {
-          const data = await userRes.json();
-          if (data && data.detail) errorMsg = data.detail;
-        } catch {}
-        alert(errorMsg);
-        setAddLoading(false);
-        return;
-      }
-      const userData = await userRes.json();
-      const userId = userData.id;
-      // 2. Submit student data to Student API
+      
+      // Create user via API service
+      const userData = await apiService.createUser(userFormData);
+      createdUserId = userData.id;
+      console.log('✅ User created successfully with ID:', createdUserId);
+      
+      // 2. Prepare and submit student data to Student API
+      console.log('🎓 Step 2: Creating student record...');
       const studentFormData = new FormData();
-      studentFormData.append('user', userId.toString());
+      
+      // Add student-specific fields
+      studentFormData.append('user', createdUserId.toString());
       studentFormData.append('school', addForm.school);
       studentFormData.append('theory_result', addForm.theory_result);
       studentFormData.append('practical_result', addForm.practical_result);
-      if (addFiles.form) studentFormData.append('form', addFiles.form);
-      if (addFiles.permit) studentFormData.append('permit', addFiles.permit);
-      if (addFiles.document) studentFormData.append('document', addFiles.document);
-      const studentRes = await fetch('http://127.0.0.1:8000/api/students/', {
-        method: 'POST',
-        body: studentFormData,
-      });
-      if (studentRes.ok) {
-        setShowAddModal(false);
-        setAddForm({
-          username: '', email: '', password: '', first_name: '', last_name: '', is_active: 'true', role: 'student', address: '', phone_number: '', school: '', theory_result: 'pending', practical_result: 'pending',
-        });
-        setAddFiles({ profile_picture: null, form: null, permit: null, document: null });
-        fetchStudents();
-      } else {
-        let errorMsg = 'Failed to add student.';
-        try {
-          const data = await studentRes.json();
-          errorMsg += '\n' + JSON.stringify(data, null, 2);
-        } catch {}
-        alert(errorMsg);
+      
+      // Add student files if provided
+      if (addFiles.form) {
+        studentFormData.append('form', addFiles.form);
+        console.log('📄 Form document added to student data');
       }
-    } catch {
-      alert('Network error. Please try again.');
+      if (addFiles.permit) {
+        studentFormData.append('permit', addFiles.permit);
+        console.log('📋 Permit document added to student data');
+      }
+      if (addFiles.document) {
+        studentFormData.append('document', addFiles.document);
+        console.log('📑 Additional document added to student data');
+      }
+      
+      // Create student via API service
+      const studentData = await apiService.createStudent(studentFormData);
+      console.log('✅ Student created successfully:', studentData);
+      
+      // Success: Close modal and reset form
+      setShowAddModal(false);
+      setAddForm({
+        username: '', 
+        email: '', 
+        password: '', 
+        first_name: '', 
+        last_name: '', 
+        is_active: 'true', 
+        role: 'student', 
+        address: '', 
+        phone_number: '', 
+        school: user && user.role === 'school_admin' && userSchoolId ? userSchoolId.toString() : '', 
+        theory_result: 'pending', 
+        practical_result: 'pending',
+      });
+      setAddFiles({ profile_picture: null, form: null, permit: null, document: null });
+      
+      // Refresh the students list
+      await fetchStudents();
+      
+      alert(`Student "${addForm.first_name} ${addForm.last_name}" created successfully!`);
+      
+    } catch (error) {
+      console.error('❌ Error during student creation:', error);
+      
+      let errorMessage = 'Failed to create student.';
+      
+      try {
+        const errorData = JSON.parse(error.message);
+        
+        if (errorData && errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData && typeof errorData === 'object') {
+          // Handle field-specific errors
+          const errors = [];
+          Object.keys(errorData).forEach(field => {
+            if (Array.isArray(errorData[field])) {
+              errors.push(`${field}: ${errorData[field].join(', ')}`);
+            } else {
+              errors.push(`${field}: ${errorData[field]}`);
+            }
+          });
+          if (errors.length > 0) {
+            errorMessage = errors.join('\n');
+          }
+        }
+      } catch (parseError) {
+        console.error('Error parsing API response:', parseError);
+        errorMessage = 'An unexpected error occurred. Please try again.';
+      }
+      
+      alert(`Student Creation Failed:\n${errorMessage}`);
+      
+      // If we created a user but student creation failed, we should note this
+      if (createdUserId) {
+        console.warn('⚠️ User was created but student record failed. User ID:', createdUserId);
+        alert('Note: A user account was created but the student record failed. Please contact the administrator to resolve this issue.');
+      }
+      
     } finally {
       setAddLoading(false);
     }

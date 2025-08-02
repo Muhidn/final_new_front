@@ -9,7 +9,6 @@ const UploadResult = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [processingId, setProcessingId] = useState(null);
   const [schoolsData, setSchoolsData] = useState({});
 
@@ -366,47 +365,14 @@ const UploadResult = () => {
                     </select>
                   </div>
                   <div className="col-md-6">
-                    <label className="form-label">Search Students</label>
-                    <div className="flying-search-container">
-                      <div className="search-toggle-wrapper">
-                        <button
-                          className={`btn search-toggle-btn ${isSearchOpen ? 'active' : ''}`}
-                          onClick={() => setIsSearchOpen(!isSearchOpen)}
-                          title="Toggle Search"
-                        >
-                          <i className={`bi ${isSearchOpen ? 'bi-x-lg' : 'bi-search'}`}></i>
-                          {!isSearchOpen && <span className="ms-2">Search</span>}
-                        </button>
-                      </div>
-                      <div className={`flying-search-input ${isSearchOpen ? 'open' : ''}`}>
-                        <input
-                          type="text"
-                          className="form-control search-input"
-                          placeholder="Search by name, email, or school..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          autoFocus={isSearchOpen}
-                        />
-                        {searchTerm && (
-                          <button
-                            className="btn clear-search-btn"
-                            onClick={() => {
-                              setSearchTerm('');
-                              setIsSearchOpen(false);
-                            }}
-                            title="Clear Search"
-                          >
-                            <i className="bi bi-x-circle-fill"></i>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    {searchTerm && (
-                      <small className="text-info mt-1 d-block">
-                        <i className="bi bi-funnel me-1"></i>
-                        Found {filteredResults.length} student(s) matching "{searchTerm}"
-                      </small>
-                    )}
+                    <label className="form-label">Search</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Search by name, email, or school..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                   </div>
                 </div>
               </div>
@@ -417,26 +383,12 @@ const UploadResult = () => {
               <div className="card-body text-center">
                 <h6 className="text-muted mb-3">Quick Actions</h6>
                 <button 
-                  className="btn btn-primary me-2"
+                  className="btn btn-primary"
                   onClick={fetchStudents}
                 >
                   <i className="bi bi-arrow-clockwise me-2"></i>
                   Refresh
                 </button>
-                {(searchTerm || filter !== 'all') && (
-                  <button 
-                    className="btn btn-outline-secondary"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setFilter('all');
-                      setIsSearchOpen(false);
-                    }}
-                    title="Clear all filters"
-                  >
-                    <i className="bi bi-funnel-fill me-2"></i>
-                    Clear Filters
-                  </button>
-                )}
               </div>
             </div>
           </div>
