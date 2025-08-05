@@ -41,13 +41,10 @@ const ManageStudents = () => {
   
   // API Service Functions
   const apiService = {
-    // Create user account
-    createUser: async (formData) => {
-      console.log('🔗 API: Creating user account...');
-      const response = await fetch(`${API_BASE_URL}/users/`, {
-        method: 'POST',
-        body: formData,
-      });
+    // Get school admin data
+    getSchoolAdmins: async () => {
+      console.log('🔗 API: Fetching school admins...');
+      const response = await fetch(`${API_BASE_URL}/school_admins/`);
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -57,20 +54,74 @@ const ManageStudents = () => {
       return response.json();
     },
     
-    // Create student record
-    createStudent: async (formData) => {
-      console.log('🔗 API: Creating student record...');
-      const response = await fetch(`${API_BASE_URL}/students/`, {
+    // Create user account
+    createUser: async (formData) => {
+      console.log('🔗 API: Creating user account...');
+      console.log('📤 Request URL:', `${API_BASE_URL}/users/`);
+      
+      const response = await fetch(`${API_BASE_URL}/users/`, {
         method: 'POST',
         body: formData,
       });
       
+      console.log('📥 User creation response status:', response.status);
+      console.log('📥 User creation response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorText = await response.text();
+        console.error('❌ User creation failed with status:', response.status);
+        console.error('❌ Error response text:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { detail: errorText || `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
         throw new Error(JSON.stringify(errorData));
       }
       
-      return response.json();
+      const userData = await response.json();
+      console.log('✅ User created successfully:', userData);
+      return userData;
+    },
+    
+    // Create student record
+    createStudent: async (studentData) => {
+      console.log('🔗 API: Creating student record...');
+      console.log('📤 Request URL:', `${API_BASE_URL}/students/`);
+      console.log('📤 Student data:', studentData);
+      
+      // Send as JSON since the backend expects nested user object
+      const response = await fetch(`${API_BASE_URL}/students/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(studentData),
+      });
+      
+      console.log('📥 Student creation response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Student creation failed with status:', response.status);
+        console.error('❌ Error response text:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { detail: errorText || `HTTP ${response.status}: ${response.statusText}` };
+        }
+        
+        throw new Error(JSON.stringify(errorData));
+      }
+      
+      const studentResult = await response.json();
+      console.log('✅ Student created successfully:', studentResult);
+      return studentResult;
     },
     
     // Update user account
@@ -107,6 +158,23 @@ const ManageStudents = () => {
       return response.json();
     },
     
+    // Update student files
+    updateStudentFiles: async (studentId, formData) => {
+      console.log('🔗 API: Updating student files...');
+      const response = await fetch(`${API_BASE_URL}/students/${studentId}/`, {
+        method: 'PATCH',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ File upload failed:', errorText);
+        throw new Error(errorText || 'File upload failed');
+      }
+      
+      return response.json();
+    },
+    
     // Delete user (cleanup function)
     deleteUser: async (userId) => {
       console.log('🗑️ API: Cleaning up user account...');
@@ -128,12 +196,9 @@ const ManageStudents = () => {
 
     try {
       console.log('🔍 FETCHING SCHOOL ADMIN DATA FOR USER:', user.id);
-      const response = await fetch('http://127.0.0.1:8000/api/school-admins/');
-      if (!response.ok) {
-        throw new Error('Failed to fetch school admin data');
-      }
       
-      const schoolAdmins = await response.json();
+      // Use API service to get school admins
+      const schoolAdmins = await apiService.getSchoolAdmins();
       console.log('📊 ALL SCHOOL ADMINS:', schoolAdmins);
       
       // Find the school admin record for the current user
@@ -153,6 +218,9 @@ const ManageStudents = () => {
       }
     } catch (error) {
       console.error('Error fetching school admin data:', error);
+      
+      // Handle the error gracefully - school admin functionality will be limited
+      console.warn('⚠️ School admin data could not be fetched. Some features may be limited.');
     }
   };
 
@@ -404,6 +472,11 @@ const ManageStudents = () => {
     if (!addForm.last_name.trim()) errors.push('Last name is required');
     if (!addForm.school) errors.push('School selection is required');
     
+    // Validate school ID is a valid number
+    if (addForm.school && (isNaN(parseInt(addForm.school)) || parseInt(addForm.school) <= 0)) {
+      errors.push('Please select a valid school');
+    }
+    
     // Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (addForm.email && !emailRegex.test(addForm.email)) {
@@ -423,11 +496,20 @@ const ManageStudents = () => {
       errors.push('Password must be at least 6 characters long');
     }
     
-    // Phone number validation (if provided)
+    // Phone number validation (if provided) - Tanzanian format
     if (addForm.phone_number && addForm.phone_number.trim()) {
-      const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-      if (!phoneRegex.test(addForm.phone_number.replace(/[\s\-\(\)]/g, ''))) {
-        errors.push('Please enter a valid phone number');
+      // Remove all non-digit characters except the plus sign
+      const cleanPhone = addForm.phone_number.replace(/[\s\-\(\)]/g, '');
+      
+      // Tanzanian phone number validation
+      // Format 1: Domestic - starts with 0, exactly 10 digits (e.g., 0712345678)
+      // Format 2: International - starts with +255, followed by 9 digits (e.g., +255712345678)
+      
+      const domesticPattern = /^0\d{9}$/; // 0 followed by exactly 9 digits (total 10)
+      const internationalPattern = /^\+255\d{9}$/; // +255 followed by exactly 9 digits
+      
+      if (!domesticPattern.test(cleanPhone) && !internationalPattern.test(cleanPhone)) {
+        errors.push('Please enter a valid Tanzanian phone number (e.g., 0712345678 or +255712345678)');
       }
     }
     
@@ -489,10 +571,16 @@ const ManageStudents = () => {
       userFormData.append('password', addForm.password);
       userFormData.append('first_name', addForm.first_name.trim());
       userFormData.append('last_name', addForm.last_name.trim());
-      userFormData.append('is_active', addForm.is_active);
+      userFormData.append('is_active', addForm.is_active === 'true' ? 'true' : 'false');
       userFormData.append('role', 'student');
       userFormData.append('address', addForm.address.trim());
       userFormData.append('phone_number', addForm.phone_number.trim());
+      
+      // Log the user data being sent
+      console.log('📤 User FormData being sent:');
+      for (let [key, value] of userFormData.entries()) {
+        console.log(`  ${key}: ${value}`);
+      }
       
       // Add profile picture if provided
       if (addFiles.profile_picture) {
@@ -505,32 +593,76 @@ const ManageStudents = () => {
       createdUserId = userData.id;
       console.log('✅ User created successfully with ID:', createdUserId);
       
+      // Small delay to ensure user is fully saved in database
+      console.log('⏳ Waiting 500ms for user to be fully saved...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // 2. Prepare and submit student data to Student API
       console.log('🎓 Step 2: Creating student record...');
-      const studentFormData = new FormData();
       
-      // Add student-specific fields
-      studentFormData.append('user', createdUserId.toString());
-      studentFormData.append('school', addForm.school);
-      studentFormData.append('theory_result', addForm.theory_result);
-      studentFormData.append('practical_result', addForm.practical_result);
-      
-      // Add student files if provided
-      if (addFiles.form) {
-        studentFormData.append('form', addFiles.form);
-        console.log('📄 Form document added to student data');
-      }
-      if (addFiles.permit) {
-        studentFormData.append('permit', addFiles.permit);
-        console.log('📋 Permit document added to student data');
-      }
-      if (addFiles.document) {
-        studentFormData.append('document', addFiles.document);
-        console.log('📑 Additional document added to student data');
+      // Validate that we have the required data
+      if (!createdUserId) {
+        throw new Error('User ID is missing from user creation response');
       }
       
-      // Create student via API service
-      const studentData = await apiService.createStudent(studentFormData);
+      if (!addForm.school || addForm.school === '') {
+        throw new Error('School selection is required for student creation');
+      }
+      
+      // Validate school exists in our schools list
+      const selectedSchool = schools.find(school => school.id.toString() === addForm.school.toString());
+      if (!selectedSchool) {
+        throw new Error(`Selected school (ID: ${addForm.school}) not found in available schools`);
+      }
+      console.log('🏫 Using school:', selectedSchool.name, `(ID: ${selectedSchool.id})`);
+      
+      // Prepare student data with user ID (not full user object)
+      const studentData = {
+        user: parseInt(createdUserId), // Just the user ID as integer
+        school: parseInt(addForm.school), // School ID as integer
+        theory_result: addForm.theory_result,
+        practical_result: addForm.practical_result,
+      };
+      
+      console.log('📤 Student data being sent:', JSON.stringify(studentData, null, 2));
+      
+      // Create student via API service (will try FormData first, then JSON)
+      const createdStudent = await apiService.createStudent(studentData);
+      console.log('✅ Student created successfully:', createdStudent);
+      
+      // Handle file uploads separately if any files were provided
+      if (addFiles.form || addFiles.permit || addFiles.document) {
+        console.log('📎 Uploading student files...');
+        
+        const fileFormData = new FormData();
+        if (addFiles.form) {
+          fileFormData.append('form', addFiles.form);
+          console.log('📄 Form document added');
+        }
+        if (addFiles.permit) {
+          fileFormData.append('permit', addFiles.permit);
+          console.log('📋 Permit document added');
+        }
+        if (addFiles.document) {
+          fileFormData.append('document', addFiles.document);
+          console.log('📑 Additional document added');
+        }
+        
+        try {
+          const fileResponse = await fetch(`${API_BASE_URL}/students/${createdStudent.id}/`, {
+            method: 'PATCH',
+            body: fileFormData,
+          });
+          
+          if (fileResponse.ok) {
+            console.log('✅ Files uploaded successfully');
+          } else {
+            console.warn('⚠️ File upload failed, but student was created successfully');
+          }
+        } catch (fileError) {
+          console.warn('⚠️ File upload error:', fileError.message);
+        }
+      }
       console.log('✅ Student created successfully:', studentData);
       
       // Success: Close modal and reset form
@@ -560,9 +692,11 @@ const ManageStudents = () => {
       console.error('❌ Error during student creation:', error);
       
       let errorMessage = 'Failed to create student.';
+      let detailedError = '';
       
       try {
         const errorData = JSON.parse(error.message);
+        console.log('📋 Parsed error data:', errorData);
         
         if (errorData && errorData.detail) {
           errorMessage = errorData.detail;
@@ -578,19 +712,31 @@ const ManageStudents = () => {
           });
           if (errors.length > 0) {
             errorMessage = errors.join('\n');
+            detailedError = `\n\nDetailed errors:\n${errors.join('\n')}`;
           }
         }
       } catch (parseError) {
         console.error('Error parsing API response:', parseError);
-        errorMessage = 'An unexpected error occurred. Please try again.';
+        console.error('Raw error message:', error.message);
+        errorMessage = `An unexpected error occurred: ${error.message}`;
       }
       
-      alert(`Student Creation Failed:\n${errorMessage}`);
+      console.log('🚨 Final error message to show user:', errorMessage);
+      alert(`Student Creation Failed:\n${errorMessage}${detailedError}`);
       
       // If we created a user but student creation failed, we should note this
       if (createdUserId) {
         console.warn('⚠️ User was created but student record failed. User ID:', createdUserId);
-        alert('Note: A user account was created but the student record failed. Please contact the administrator to resolve this issue.');
+        console.log('🔧 Attempting to cleanup created user...');
+        
+        try {
+          await apiService.deleteUser(createdUserId);
+          console.log('✅ Successfully cleaned up user account');
+          alert('Note: The partially created account has been cleaned up. Please try again.');
+        } catch (cleanupError) {
+          console.error('❌ Failed to cleanup user account:', cleanupError);
+          alert(`Note: A user account was created (ID: ${createdUserId}) but the student record failed. Please contact the administrator to resolve this issue.`);
+        }
       }
       
     } finally {
@@ -990,7 +1136,20 @@ const ManageStudents = () => {
                     <input type="text" className="form-control" name="address" placeholder="Address" value={editForm.address} onChange={handleEditChange} />
                   </div>
                   <div className="mb-3">
-                    <input type="text" className="form-control" name="phone_number" placeholder="Phone Number" value={editForm.phone_number} onChange={handleEditChange} />
+                    <input 
+                      type="text" 
+                      className="form-control" 
+                      name="phone_number" 
+                      placeholder="Phone Number (e.g., 0712345678 or +255712345678)" 
+                      value={editForm.phone_number} 
+                      onChange={handleEditChange}
+                      maxLength="13"
+                      title="Enter Tanzanian phone number: 0712345678 (10 digits starting with 0) or +255712345678 (international format)"
+                    />
+                    <small className="text-muted">
+                      <i className="bi bi-info-circle me-1"></i>
+                      Tanzanian format: 0712345678 (10 digits) or +255712345678 (international)
+                    </small>
                   </div>
                   <div className="mb-3">
                     <select 
@@ -1080,7 +1239,20 @@ const ManageStudents = () => {
                       <input type="text" className="form-control" name="address" placeholder="Address" value={addForm.address} onChange={handleAddChange} />
                     </div>
                     <div className="col-md-6">
-                      <input type="text" className="form-control" name="phone_number" placeholder="Phone Number" value={addForm.phone_number} onChange={handleAddChange} />
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        name="phone_number" 
+                        placeholder="Phone Number (e.g., 0712345678 or +255712345678)" 
+                        value={addForm.phone_number} 
+                        onChange={handleAddChange}
+                        maxLength="13"
+                        title="Enter Tanzanian phone number: 0712345678 (10 digits starting with 0) or +255712345678 (international format)"
+                      />
+                      <small className="text-muted">
+                        <i className="bi bi-info-circle me-1"></i>
+                        Tanzanian format: 0712345678 (10 digits) or +255712345678 (international)
+                      </small>
                     </div>
                     <div className="col-md-6">
                       <select 

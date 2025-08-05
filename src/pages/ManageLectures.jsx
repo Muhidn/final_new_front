@@ -133,7 +133,7 @@ const ManageLectures = () => {
 
     try {
       console.log('🔍 FETCHING SCHOOL ADMIN DATA FOR USER:', user.id);
-      const response = await fetch('http://127.0.0.1:8000/api/school-admins/');
+      const response = await fetch('http://127.0.0.1:8000/api/school_admins/');
       if (!response.ok) {
         throw new Error('Failed to fetch school admin data');
       }
