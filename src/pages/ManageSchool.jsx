@@ -87,7 +87,19 @@ const ManageSchool = () => {
       const res = await fetch("http://127.0.0.1:8000/api/school_admins/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        //body: JSON.stringify(form),
+         body: JSON.stringify({
+        user: {
+          username: form.username,
+          email: form.email,
+          first_name: form.first_name,
+          last_name: form.last_name,
+          address: form.address,
+          phone_number: form.phone_number,
+          role: "school_admin",
+        },
+        school: form.school,
+      }),
       });
       if (res.ok) {
         setMessage("School admin registered successfully!");
